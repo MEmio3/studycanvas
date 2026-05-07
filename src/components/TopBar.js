@@ -1,17 +1,25 @@
 export class TopBar {
-  constructor(container, deck, onModeChange) {
+  constructor(container, deck, activePage, onModeChange, onTopicChange) {
     this.container = container;
     this.deck = deck;
+    this.activePage = activePage;
     this.onModeChange = onModeChange;
+    this.onTopicChange = onTopicChange;
     this.currentMode = 'edit';
+  }
+
+  setActivePage(page) {
+    this.activePage = page;
+    this.render();
   }
 
   render() {
     this.container.innerHTML = `
       <div class="top-bar flex-between" style="padding: var(--space-12) var(--space-24); border-bottom: 1px solid var(--border-default); background: var(--bg-surface);">
         <div class="logo-text" style="cursor: pointer;" id="tb-logo">study<span>canvas</span></div>
-        <div class="deck-title" style="flex-grow: 1; margin: 0 var(--space-24);">
+        <div class="deck-title" style="flex-grow: 1; margin: 0 var(--space-24); display: flex; align-items: center; gap: var(--space-12);">
           <input type="text" id="tb-deck-title" value="${this.deck.title}" style="background: transparent; border: none; font-size: 16px; font-weight: 600; padding: var(--space-4); width: 100%; max-width: 400px;" placeholder="Untitled Deck">
+          <input type="text" id="tb-page-topic" value="${this.activePage?.topic || ''}" style="background: var(--bg-base); border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 12px; padding: var(--space-4) var(--space-8); width: 120px;" placeholder="Add topic...">
         </div>
         <div class="page-counter meta-text" style="margin-right: var(--space-24);" id="tb-counter">
           Page 1 of ${this.deck.pages.length}
@@ -37,10 +45,19 @@ export class TopBar {
     });
 
     const titleInput = this.container.querySelector('#tb-deck-title');
-    titleInput.addEventListener('blur', () => {
-      this.deck.title = titleInput.value || "Untitled Deck";
-      document.dispatchEvent(new CustomEvent('deck-title-changed', { detail: this.deck.title }));
-    });
+    if (titleInput) {
+      titleInput.addEventListener('blur', () => {
+        this.deck.title = titleInput.value || "Untitled Deck";
+        document.dispatchEvent(new CustomEvent('deck-title-changed', { detail: this.deck.title }));
+      });
+    }
+
+    const topicInput = this.container.querySelector('#tb-page-topic');
+    if (topicInput) {
+      topicInput.addEventListener('blur', () => {
+        if (this.onTopicChange) this.onTopicChange(topicInput.value);
+      });
+    }
 
     this.container.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {

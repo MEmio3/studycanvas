@@ -41,6 +41,13 @@ class EditorView {
     
     this.handleExitPresentationBound = this.handleExitPresentation.bind(this);
     document.addEventListener('exit-presentation', this.handleExitPresentationBound);
+
+    this.handlePresentationEndBound = () => {
+      if (this.mode === 'present') {
+         this.handleSlideNext();
+      }
+    };
+    document.addEventListener('presentation-page-end', this.handlePresentationEndBound);
   }
 
   unmount() {
@@ -49,6 +56,7 @@ class EditorView {
     document.removeEventListener('slide-next', this.handleSlideNextBound);
     document.removeEventListener('slide-prev', this.handleSlidePrevBound);
     document.removeEventListener('exit-presentation', this.handleExitPresentationBound);
+    document.removeEventListener('presentation-page-end', this.handlePresentationEndBound);
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
     }
@@ -98,10 +106,23 @@ class EditorView {
       </div>
     `;
 
+    const activePage = this.pages.find(p => p.pageId === this.activePageId);
+
     this.topBar = new TopBar(
       this.container.querySelector('#top-bar-container'),
       this.deck,
-      (mode) => { this.mode = mode; this.renderMainCanvas(); }
+      activePage,
+      (mode) => { this.mode = mode; this.renderMainCanvas(); },
+      async (topic) => {
+        const page = this.pages.find(p => p.pageId === this.activePageId);
+        if (page) {
+          page.topic = topic;
+          import('./store/pages.js').then(async ({ updatePage }) => {
+            await updatePage(page);
+            this.leftPanel.updatePages(this.pages, this.activePageId);
+          });
+        }
+      }
     );
     this.topBar.render();
 
@@ -122,8 +143,10 @@ class EditorView {
     this.activePageId = id;
     this.leftPanel.updatePages(this.pages, this.activePageId);
     this.renderMainCanvas();
-    const idx = this.pages.findIndex(p => p.pageId === id);
-    if (idx !== -1) {
+    const activePage = this.pages.find(p => p.pageId === id);
+    if (activePage && this.topBar) {
+      this.topBar.setActivePage(activePage);
+      const idx = this.pages.findIndex(p => p.pageId === id);
       this.topBar.updateCounter(idx + 1, this.pages.length);
     }
   }
