@@ -38,6 +38,9 @@ class EditorView {
     this.handleSlidePrevBound = this.handleSlidePrev.bind(this);
     document.addEventListener('slide-next', this.handleSlideNextBound);
     document.addEventListener('slide-prev', this.handleSlidePrevBound);
+    
+    this.handleExitPresentationBound = this.handleExitPresentation.bind(this);
+    document.addEventListener('exit-presentation', this.handleExitPresentationBound);
   }
 
   unmount() {
@@ -45,8 +48,18 @@ class EditorView {
     document.removeEventListener('deck-title-changed', this.handleDeckTitleChangeBound);
     document.removeEventListener('slide-next', this.handleSlideNextBound);
     document.removeEventListener('slide-prev', this.handleSlidePrevBound);
+    document.removeEventListener('exit-presentation', this.handleExitPresentationBound);
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
+    }
+  }
+
+  handleExitPresentation() {
+    if (this.mode === 'present') {
+      this.mode = 'slide';
+      this.topBar.currentMode = 'slide';
+      this.topBar.render();
+      this.renderLayout(); // Re-render to show panels again
     }
   }
 
@@ -159,13 +172,22 @@ class EditorView {
         this.currentCanvasComponent = new SlideCanvas(canvasContainer, activePage);
         this.currentCanvasComponent.render();
       });
-    } else {
-      canvasContainer.innerHTML = `
-        <div class="flex-center" style="height: 100%; color: var(--text-secondary); flex-direction: column; gap: var(--space-16);">
-          <i class="ti ti-presentation" style="font-size: 48px; opacity: 0.5;"></i>
-          <div>Presentation Mode placeholder</div>
-        </div>
-      `;
+    } else if (this.mode === 'present') {
+      // Hide panels
+      const topBarContainer = this.container.querySelector('#top-bar-container');
+      const leftPanelContainer = this.container.querySelector('#left-panel-container');
+      if (topBarContainer) topBarContainer.style.display = 'none';
+      if (leftPanelContainer) leftPanelContainer.style.display = 'none';
+
+      // Enter fullscreen
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen denied:', e));
+      }
+
+      import('./components/PresentCanvas.js').then(({ PresentCanvas }) => {
+        this.currentCanvasComponent = new PresentCanvas(canvasContainer, activePage);
+        this.currentCanvasComponent.render();
+      });
     }
   }
 }
