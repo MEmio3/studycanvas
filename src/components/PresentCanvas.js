@@ -6,10 +6,11 @@ export class PresentCanvas {
   constructor(container, page) {
     this.container = container;
     this.page = page;
+    this.activeImageIndex = 0;
   }
 
   async render() {
-    const imgRecord = this.page.images.length > 0 ? this.page.images[0] : null;
+    const imgRecord = this.page.images.length > 0 ? this.page.images[this.activeImageIndex] : null;
 
     this.container.innerHTML = `
       <div class="present-canvas animate-fade-in" style="display: flex; flex-direction: column; height: 100%; background: #111; position: relative;">
@@ -23,6 +24,11 @@ export class PresentCanvas {
               <div id="annotation-layer-container"></div>
             </div>
           ` : `<div style="color: #666;">No image</div>`}
+          ${this.page.images.length > 1 ? `
+            <div style="position: absolute; bottom: 20%; left: 0; width: 100%; display: flex; justify-content: center; gap: var(--space-8); margin-bottom: var(--space-16);">
+              ${this.page.images.map((_, i) => `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${i === this.activeImageIndex ? 'var(--text-primary)' : 'rgba(255,255,255,0.3)'};"></div>`).join('')}
+            </div>
+          ` : ''}
         </div>
 
         <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 20%; min-height: 120px; display: flex; flex-direction: column;">
@@ -76,7 +82,7 @@ export class PresentCanvas {
         imgEl.onload = () => {
           this.annotationLayer = new AnnotationLayer(
             this.container.querySelector('#annotation-layer-container'),
-            this.page.images[0],
+            this.page.images[this.activeImageIndex],
             this.page,
             false
           );
@@ -159,6 +165,16 @@ export class PresentCanvas {
         document.dispatchEvent(new CustomEvent('slide-next'));
       } else if (e.key === 'ArrowLeft') {
         document.dispatchEvent(new CustomEvent('slide-prev'));
+      } else if (e.key === 'ArrowUp') {
+        if (this.activeImageIndex > 0) {
+          this.activeImageIndex--;
+          this.render();
+        }
+      } else if (e.key === 'ArrowDown') {
+        if (this.activeImageIndex < this.page.images.length - 1) {
+          this.activeImageIndex++;
+          this.render();
+        }
       } else if (e.key === 'Escape') {
         this.exitPresentation();
       } else if (e.key === ' ') {

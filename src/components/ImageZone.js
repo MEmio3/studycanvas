@@ -7,6 +7,7 @@ export class ImageZone {
   constructor(container, page) {
     this.container = container;
     this.page = page;
+    this.activeImageIndex = 0;
   }
 
   render() {
@@ -23,12 +24,26 @@ export class ImageZone {
       `;
       this.attachDropEvents();
     } else {
-      const img = this.page.images[0];
+      const img = this.page.images[this.activeImageIndex];
+      const thumbsHtml = this.page.images.length > 1 ? `
+        <div style="display: flex; gap: var(--space-8); padding: var(--space-8); overflow-x: auto; border-top: 1px solid var(--border-default); background: var(--bg-surface);">
+          ${this.page.images.map((im, i) => `
+            <div class="thumbnail-btn" data-index="${i}" style="width: 48px; height: 36px; background: #000; border-radius: var(--radius-sm); border: 2px solid ${i === this.activeImageIndex ? 'var(--accent-primary)' : 'transparent'}; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="ti ti-photo" style="color: white; font-size: 16px;"></i>
+            </div>
+          `).join('')}
+        </div>
+      ` : '';
+
       this.container.innerHTML = `
         <div style="flex-grow: 1; display: flex; flex-direction: column; position: relative;">
           <div style="padding: var(--space-8); border-bottom: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center;">
-            <span class="meta-text">1 / ${this.page.images.length} images</span>
-            <button class="ghost icon-only" id="btn-add-img" title="Add Image"><i class="ti ti-plus"></i></button>
+            <span class="meta-text">${this.activeImageIndex + 1} / ${this.page.images.length} images</span>
+            <div>
+              <button class="ghost icon-only" id="btn-add-img" title="Add Image"><i class="ti ti-plus"></i></button>
+              <button class="ghost icon-only" id="btn-delete-img" title="Delete Image" style="color: var(--danger);"><i class="ti ti-trash"></i></button>
+            </div>
+            <input type="file" id="add-img-input" accept="image/*" style="display: none;" multiple>
           </div>
           <div style="flex-grow: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; position: relative;" id="img-display-area">
              <div id="img-wrapper" style="position: relative; display: inline-block; max-width: 100%; max-height: 100%;">
@@ -36,6 +51,7 @@ export class ImageZone {
                <div id="annotation-layer-container"></div>
              </div>
           </div>
+          ${thumbsHtml}
           <div style="padding: var(--space-12); border-top: 1px solid var(--border-default); background: var(--bg-surface);">
             <input type="text" placeholder="Add image caption..." value="${img.caption || ''}" id="img-caption">
           </div>
@@ -43,6 +59,28 @@ export class ImageZone {
       `;
       this.loadImage(img.storageKey);
       this.attachCaptionEvents(img);
+
+      const addBtn = this.container.querySelector('#btn-add-img');
+      const addInput = this.container.querySelector('#add-img-input');
+      addBtn.addEventListener('click', () => addInput.click());
+      addInput.addEventListener('change', (e) => this.handleFiles(Array.from(e.target.files)));
+      
+      const delBtn = this.container.querySelector('#btn-delete-img');
+      delBtn.addEventListener('click', async () => {
+        if (confirm('Delete this image?')) {
+          this.page.images.splice(this.activeImageIndex, 1);
+          this.activeImageIndex = Math.max(0, this.activeImageIndex - 1);
+          await updatePage(this.page);
+          this.render();
+        }
+      });
+
+      this.container.querySelectorAll('.thumbnail-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          this.activeImageIndex = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+          this.render();
+        });
+      });
     }
   }
 
@@ -56,7 +94,7 @@ export class ImageZone {
         imgEl.onload = () => {
           this.annotationLayer = new AnnotationLayer(
             this.container.querySelector('#annotation-layer-container'),
-            this.page.images[0],
+            this.page.images[this.activeImageIndex],
             this.page,
             true, // isEditable
             (ann, idx) => {

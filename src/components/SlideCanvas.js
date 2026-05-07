@@ -4,6 +4,7 @@ export class SlideCanvas {
   constructor(container, page) {
     this.container = container;
     this.page = page;
+    this.activeImageIndex = 0;
   }
 
   render() {
@@ -14,18 +15,23 @@ export class SlideCanvas {
     } else {
       textHtml = this.page.textBlock?.rawText || 'No text added yet.';
     }
-    const imgRecord = this.page.images.length > 0 ? this.page.images[0] : null;
+    const imgRecord = this.page.images.length > 0 ? this.page.images[this.activeImageIndex] : null;
 
     this.container.innerHTML = `
       <div class="slide-canvas animate-fade-in" style="display: flex; height: 100%; background: var(--bg-base);">
         <div style="flex: 50%; padding: var(--space-24); display: flex; flex-direction: column; border-right: 1px solid var(--border-default);">
-          <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #000; border-radius: var(--radius-lg); overflow: hidden;">
+          <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; border-radius: var(--radius-lg); overflow: hidden; position: relative;">
             ${imgRecord ? `
               <div id="img-wrapper" style="position: relative; display: inline-block; max-width: 100%; max-height: 100%;">
                 <img id="slide-img" src="" style="display: block; max-width: 100%; max-height: 100%; object-fit: contain;">
                 <div id="annotation-layer-container"></div>
               </div>
             ` : `<div style="color: var(--text-tertiary);">No image</div>`}
+            ${this.page.images.length > 1 ? `
+              <div style="position: absolute; bottom: 16px; display: flex; gap: var(--space-8); justify-content: center; width: 100%;">
+                ${this.page.images.map((_, i) => `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${i === this.activeImageIndex ? 'var(--text-primary)' : 'rgba(255,255,255,0.3)'};"></div>`).join('')}
+              </div>
+            ` : ''}
           </div>
           ${imgRecord && imgRecord.caption ? `<div style="margin-top: var(--space-12); text-align: center;" class="caption-text">${imgRecord.caption}</div>` : ''}
         </div>
@@ -56,7 +62,7 @@ export class SlideCanvas {
         imgEl.onload = () => {
           this.annotationLayer = new AnnotationLayer(
             this.container.querySelector('#annotation-layer-container'),
-            this.page.images[0],
+            this.page.images[this.activeImageIndex],
             this.page,
             true, // clickable to scroll
             (ann) => {
@@ -95,6 +101,16 @@ export class SlideCanvas {
         document.dispatchEvent(new CustomEvent('slide-next'));
       } else if (e.key === 'ArrowLeft') {
         document.dispatchEvent(new CustomEvent('slide-prev'));
+      } else if (e.key === 'ArrowUp') {
+        if (this.activeImageIndex > 0) {
+          this.activeImageIndex--;
+          this.render();
+        }
+      } else if (e.key === 'ArrowDown') {
+        if (this.activeImageIndex < this.page.images.length - 1) {
+          this.activeImageIndex++;
+          this.render();
+        }
       }
     };
     document.addEventListener('keydown', this.keydownHandler);
