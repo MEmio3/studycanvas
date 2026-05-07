@@ -1,0 +1,111 @@
+/* Base Buttons */
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  font-weight: 500;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  justify-content: center;
+}
+
+button.primary {
+  background-color: var(--accent-primary);
+  color: #fff;
+}
+
+button.primary:hover {
+  background-color: var(--accent-light);
+}
+
+button.ghost {
+  border: 1px solid var(--border-default);
+  background-color: transparent;
+  color: var(--text-primary);
+}
+
+button.ghost:hover {
+  background-color: var(--bg-hover);
+}
+
+button.icon-only {
+  padding: var(--space-8);
+  border-radius: var(--radius-md);
+}
+
+button.icon-only:hover {
+  background-color: var(--bg-hover);
+}
+
+input[type="text"], textarea {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  padding: var(--space-8);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  width: 100%;
+}
+
+input[type="text"]:focus, textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(29, 158, 117, 0.2);
+}
+
+.card {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-16);
+}
+
+.pill {
+  background-color: var(--accent-primary);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11px;
+  display: inline-block;
+}
+
+.scrollable {
+  overflow-y: auto;
+}
+
+.scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollable::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-pill);
+}
+.scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--border-emphasis);
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hidden {
+  display: none !important;
+}

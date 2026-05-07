@@ -1,0 +1,41 @@
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.logo-text {
+  font-family: var(--font-logo);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.logo-text span {
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
+.page-title {
+  font-size: 18px;
+}
+
+.subtitle-text {
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.caption-text, .meta-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.code-text {
+  font-family: var(--font-logo);
+  font-size: 12px;
+}
