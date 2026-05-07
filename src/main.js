@@ -33,17 +33,43 @@ class EditorView {
     // Bind event correctly
     this.handleDeckTitleChangeBound = this.handleDeckTitleChange.bind(this);
     document.addEventListener('deck-title-changed', this.handleDeckTitleChangeBound);
+    
+    this.handleSlideNextBound = this.handleSlideNext.bind(this);
+    this.handleSlidePrevBound = this.handleSlidePrev.bind(this);
+    document.addEventListener('slide-next', this.handleSlideNextBound);
+    document.addEventListener('slide-prev', this.handleSlidePrevBound);
   }
 
   unmount() {
     this.container.innerHTML = '';
     document.removeEventListener('deck-title-changed', this.handleDeckTitleChangeBound);
+    document.removeEventListener('slide-next', this.handleSlideNextBound);
+    document.removeEventListener('slide-prev', this.handleSlidePrevBound);
+    if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
+      this.currentCanvasComponent.unmount();
+    }
   }
 
   async handleDeckTitleChange(e) {
     if (this.deck) {
       this.deck.title = e.detail;
       await updateDeck(this.deck);
+    }
+  }
+  
+  handleSlideNext() {
+    if (this.mode !== 'slide') return;
+    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+    if (idx < this.pages.length - 1) {
+      this.setActivePage(this.pages[idx + 1].pageId);
+    }
+  }
+
+  handleSlidePrev() {
+    if (this.mode !== 'slide') return;
+    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+    if (idx > 0) {
+      this.setActivePage(this.pages[idx - 1].pageId);
     }
   }
 
@@ -113,13 +139,34 @@ class EditorView {
     const canvasContainer = this.container.querySelector('#main-canvas-container');
     const activePage = this.pages.find(p => p.pageId === this.activePageId);
     
-    canvasContainer.innerHTML = `
-      <div class="flex-center" style="height: 100%; color: var(--text-secondary); flex-direction: column; gap: var(--space-16);">
-        <i class="ti ti-edit" style="font-size: 48px; opacity: 0.5;"></i>
-        <div>Canvas Mode: ${this.mode.toUpperCase()}</div>
-        <div>Active Page: ${activePage ? activePage.title : 'None'}</div>
-      </div>
-    `;
+    if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
+      this.currentCanvasComponent.unmount();
+      this.currentCanvasComponent = null;
+    }
+    
+    if (!activePage) {
+      canvasContainer.innerHTML = '<div class="flex-center" style="height: 100%;">Select or create a page</div>';
+      return;
+    }
+
+    if (this.mode === 'edit') {
+      import('./components/EditCanvas.js').then(({ EditCanvas }) => {
+        this.currentCanvasComponent = new EditCanvas(canvasContainer, activePage);
+        this.currentCanvasComponent.render();
+      });
+    } else if (this.mode === 'slide') {
+      import('./components/SlideCanvas.js').then(({ SlideCanvas }) => {
+        this.currentCanvasComponent = new SlideCanvas(canvasContainer, activePage);
+        this.currentCanvasComponent.render();
+      });
+    } else {
+      canvasContainer.innerHTML = `
+        <div class="flex-center" style="height: 100%; color: var(--text-secondary); flex-direction: column; gap: var(--space-16);">
+          <i class="ti ti-presentation" style="font-size: 48px; opacity: 0.5;"></i>
+          <div>Presentation Mode placeholder</div>
+        </div>
+      `;
+    }
   }
 }
 
