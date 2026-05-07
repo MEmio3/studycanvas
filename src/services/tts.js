@@ -1,7 +1,7 @@
 /**
  * TTSEngine — Kokoro.js (neural, offline) with Web Speech API fallback.
  * 
- * First use downloads ~82 MB ONNX model (cached permanently in browser storage).
+ * First use downloads ~86 MB ONNX model (cached permanently in browser storage).
  * All subsequent uses are instant and fully offline.
  */
 
@@ -38,10 +38,13 @@ export class TTSEngine {
     this.kokoroInstance = null;
     this.kokoroReady = false;
     this.kokoroLoading = false;
-    this.audioElement = null;
-    this.useKokoro = true; // default to Kokoro
-    this._wordTimestamps = [];
-    this._timeUpdateBound = null;
+    this.audioContext = null;
+    this.currentSource = null;
+    this.useKokoro = true;
+    this._startTime = 0;
+    this._totalDuration = 0;
+    this._currentText = '';
+    this._animFrameId = null;
   }
 
   /**
@@ -52,11 +55,21 @@ export class TTSEngine {
   }
 
   /**
-   * Lazy-load the Kokoro model. Shows a progress indicator via custom event.
+   * Lazy-load the Kokoro model. Fires events for UI progress.
    */
   async _initKokoro() {
     if (this.kokoroReady) return true;
-    if (this.kokoroLoading) return false;
+    if (this.kokoroLoading) {
+      // Wait for the ongoing load to finish
+      return new Promise((resolve) => {
+        const check = setInterval(() => {
+          if (!this.kokoroLoading) {
+            clearInterval(check);
+            resolve(this.kokoroReady);
+          }
+        }, 200);
+      });
+    }
 
     this.kokoroLoading = true;
     document.dispatchEvent(new CustomEvent('tts-model-loading', { detail: { status: 'downloading' } }));
@@ -64,15 +77,16 @@ export class TTSEngine {
     try {
       const { KokoroTTS } = await import('kokoro-js');
       this.kokoroInstance = await KokoroTTS.from_pretrained(
-        'onnx-community/Kokoro-82M-v1.0',
-        { dtype: 'fp32' }
+        'onnx-community/Kokoro-82M-v1.0-ONNX',
+        { dtype: 'q8', device: 'wasm' }
       );
       this.kokoroReady = true;
       this.kokoroLoading = false;
       document.dispatchEvent(new CustomEvent('tts-model-loading', { detail: { status: 'ready' } }));
+      console.log('[TTS] Kokoro model loaded successfully.');
       return true;
     } catch (err) {
-      console.error('Kokoro TTS failed to load, falling back to Web Speech:', err);
+      console.error('[TTS] Kokoro failed to load, falling back to Web Speech:', err);
       this.kokoroLoading = false;
       this.useKokoro = false;
       document.dispatchEvent(new CustomEvent('tts-model-loading', { detail: { status: 'fallback' } }));
@@ -97,6 +111,7 @@ export class TTSEngine {
     if (!text || !text.trim()) return;
 
     const settings = this._getSettings();
+    this._currentText = text;
 
     if (settings.ttsEngine === 'browser' || !this.useKokoro) {
       this._playWebSpeech(text, settings, onEnd);
@@ -112,54 +127,83 @@ export class TTSEngine {
 
     try {
       const voiceId = settings.ttsVoice || 'af_heart';
-      const audio = await this.kokoroInstance.generate(text, { voice: voiceId });
+      console.log(`[TTS] Generating with Kokoro voice: ${voiceId}`);
+      const result = await this.kokoroInstance.generate(text, { voice: voiceId });
 
-      // Create blob URL from the generated audio
-      const blob = new Blob([audio.toWav()], { type: 'audio/wav' });
-      const url = URL.createObjectURL(blob);
+      // result.data = Float32Array, result.sampling_rate = number
+      const audioData = result.data;
+      const sampleRate = result.sampling_rate || 24000;
 
-      if (!this.audioElement) {
-        this.audioElement = new Audio();
-      }
-      this.audioElement.src = url;
-      this.audioElement.playbackRate = settings.ttsSpeed || 1.0;
-
-      // Estimate word timestamps for subtitle sync
-      this._estimateWordTimestamps(text, audio.toWav());
-
-      // Clean up previous listener
-      if (this._timeUpdateBound) {
-        this.audioElement.removeEventListener('timeupdate', this._timeUpdateBound);
+      // Create AudioContext and play
+      if (!this.audioContext) {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
 
-      this._timeUpdateBound = () => {
-        const currentTime = this.audioElement.currentTime;
-        const totalDuration = this.audioElement.duration;
-        if (!totalDuration) return;
+      // Resume context if it was suspended (browser autoplay policy)
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
 
-        // Estimate which word we are on based on time proportion
-        const words = text.split(/\s+/);
-        const progress = currentTime / totalDuration;
-        const wordIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
+      const buffer = this.audioContext.createBuffer(1, audioData.length, sampleRate);
+      buffer.copyToChannel(audioData, 0);
 
-        document.dispatchEvent(new CustomEvent('tts-boundary', {
-          detail: { wordIndex }
-        }));
-      };
-      this.audioElement.addEventListener('timeupdate', this._timeUpdateBound);
+      // Apply speed via playbackRate
+      const source = this.audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.playbackRate.value = settings.ttsSpeed || 1.0;
+      source.connect(this.audioContext.destination);
 
-      this.audioElement.onended = () => {
+      this.currentSource = source;
+      this._totalDuration = buffer.duration / (settings.ttsSpeed || 1.0);
+      this._startTime = this.audioContext.currentTime;
+
+      source.onended = () => {
         this.isPlaying = false;
-        URL.revokeObjectURL(url);
+        this.currentSource = null;
+        this._stopWordTracking();
         if (onEnd) onEnd();
       };
 
-      await this.audioElement.play();
+      source.start();
       this.isPlaying = true;
+      this._startWordTracking(text);
+      console.log(`[TTS] Kokoro playback started (${buffer.duration.toFixed(1)}s @ ${settings.ttsSpeed}x)`);
 
     } catch (err) {
-      console.error('Kokoro playback failed, falling back to Web Speech:', err);
+      console.error('[TTS] Kokoro playback failed, falling back to Web Speech:', err);
       this._playWebSpeech(text, settings, onEnd);
+    }
+  }
+
+  /**
+   * Track word position via requestAnimationFrame for subtitle sync.
+   */
+  _startWordTracking(text) {
+    const words = text.split(/\s+/);
+    const totalWords = words.length;
+    if (totalWords === 0) return;
+
+    const tick = () => {
+      if (!this.isPlaying || !this.audioContext) return;
+      const elapsed = this.audioContext.currentTime - this._startTime;
+      const progress = Math.min(elapsed / this._totalDuration, 1.0);
+      const wordIndex = Math.min(Math.floor(progress * totalWords), totalWords - 1);
+
+      document.dispatchEvent(new CustomEvent('tts-boundary', {
+        detail: { wordIndex }
+      }));
+
+      if (progress < 1.0) {
+        this._animFrameId = requestAnimationFrame(tick);
+      }
+    };
+    this._animFrameId = requestAnimationFrame(tick);
+  }
+
+  _stopWordTracking() {
+    if (this._animFrameId) {
+      cancelAnimationFrame(this._animFrameId);
+      this._animFrameId = null;
     }
   }
 
@@ -167,10 +211,11 @@ export class TTSEngine {
    * Fallback: Web Speech API (browser-native).
    */
   _playWebSpeech(text, settings, onEnd) {
+    console.log('[TTS] Using Web Speech API fallback.');
     this.currentUtterance = new SpeechSynthesisUtterance(text);
 
     if (settings.ttsSpeed) this.currentUtterance.rate = settings.ttsSpeed;
-    if (settings.ttsVoice) {
+    if (settings.ttsVoice && settings.ttsEngine === 'browser') {
       const voices = window.speechSynthesis.getVoices();
       const selected = voices.find(v => v.voiceURI === settings.ttsVoice);
       if (selected) this.currentUtterance.voice = selected;
@@ -196,18 +241,15 @@ export class TTSEngine {
     this.isPlaying = true;
   }
 
-  _estimateWordTimestamps(text) {
-    // Simple linear estimation — Kokoro doesn't expose per-word timing
-    const words = text.split(/\s+/);
-    this._wordTimestamps = words.map((_, i) => i / words.length);
-  }
-
   pause() {
-    if (this.audioElement && !this.audioElement.paused) {
-      this.audioElement.pause();
+    // Kokoro path — AudioContext doesn't natively pause a source, so we suspend the context
+    if (this.currentSource && this.audioContext) {
+      this.audioContext.suspend();
       this.isPlaying = false;
+      this._stopWordTracking();
       return;
     }
+    // Web Speech path
     if (this.synth.speaking && !this.synth.paused) {
       this.synth.pause();
       this.isPlaying = false;
@@ -215,11 +257,14 @@ export class TTSEngine {
   }
 
   resume() {
-    if (this.audioElement && this.audioElement.paused && this.audioElement.src) {
-      this.audioElement.play();
+    // Kokoro path
+    if (this.audioContext && this.audioContext.state === 'suspended' && this.currentSource) {
+      this.audioContext.resume();
       this.isPlaying = true;
+      this._startWordTracking(this._currentText);
       return;
     }
+    // Web Speech path
     if (this.synth.paused) {
       this.synth.resume();
       this.isPlaying = true;
@@ -227,10 +272,13 @@ export class TTSEngine {
   }
 
   stop() {
-    if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement.currentTime = 0;
+    this._stopWordTracking();
+    // Kokoro path
+    if (this.currentSource) {
+      try { this.currentSource.stop(); } catch (e) { /* already stopped */ }
+      this.currentSource = null;
     }
+    // Web Speech path
     if (this.synth.speaking) {
       this.synth.cancel();
     }
