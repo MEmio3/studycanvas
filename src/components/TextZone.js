@@ -79,9 +79,9 @@ export class TextZone {
   updateWordCount() {
     const editor = this.container.querySelector('#text-editor');
     const text = editor.innerText.trim();
-    const count = text ? text.split(/\\s+/).length : 0;
+    const count = text ? text.split(/\s+/).length : 0;
     const countEl = this.container.querySelector('#word-count');
-    if (countEl) countEl.textContent = \`\${count} words\`;
+    if (countEl) countEl.textContent = `${count} words`;
   }
 
   segmentSentences(text) {
