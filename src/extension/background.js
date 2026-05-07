@@ -1,6 +1,9 @@
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionIconClick: true })
-  .catch((error) => console.error(error));
+// Open side panel when the extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {
+    console.log("Side panel could not be opened.");
+  });
+});
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'capture_page') {
@@ -14,15 +17,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           screenshotDataUrl: dataUrl
         }
       }).catch(() => {
-         // It's possible the side panel is not open, so sendMessage fails.
          console.log("Side panel might not be open to receive the message.");
       });
       
-      try {
-        // Try to open side panel automatically
-        chrome.sidePanel.open({ windowId: sender.tab.windowId });
-      } catch(e) {
-        console.log("Could not open side panel programmatically:", e);
+      // Try to open side panel automatically
+      if (sender.tab) {
+        chrome.sidePanel.open({ windowId: sender.tab.windowId }).catch(() => {});
       }
 
       sendResponse({ success: true });
