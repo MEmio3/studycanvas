@@ -1,7 +1,7 @@
-import { saveDeck } from '../store/decks.js';
-import { savePage } from '../store/pages.js';
+import { updateDeck } from '../store/decks.js';
+import { updatePage } from '../store/pages.js';
 import { saveImage } from '../store/images.js';
-import { generateUUID } from '../utils/uuid.js';
+import { generateId } from '../utils/uuid.js';
 
 export function importDeckFromJson(file, onComplete, onError) {
   const reader = new FileReader();
@@ -12,7 +12,7 @@ export function importDeckFromJson(file, onComplete, onError) {
         throw new Error('Invalid StudyCanvas format');
       }
 
-      const newDeckId = generateUUID();
+      const newDeckId = generateId();
       const oldToNewPageMap = {};
 
       const deck = { ...data.deck };
@@ -20,7 +20,7 @@ export function importDeckFromJson(file, onComplete, onError) {
       deck.pages = [];
 
       for (const page of data.pages) {
-        const newPageId = generateUUID();
+        const newPageId = generateId();
         oldToNewPageMap[page.pageId] = newPageId;
         deck.pages.push(newPageId);
         
@@ -37,17 +37,17 @@ export function importDeckFromJson(file, onComplete, onError) {
                 base64String = base64String.split(',')[1];
               }
               const blob = await base64ToBlob(base64String, mimeType);
-              const newStorageKey = `img_${generateUUID()}`;
+              const newStorageKey = `img_${generateId()}`;
               img.storageKey = newStorageKey;
               await saveImage(newStorageKey, blob);
               delete img.base64Data;
             }
           }
         }
-        await savePage(page);
+        await updatePage(page);
       }
 
-      await saveDeck(deck);
+      await updateDeck(deck);
       if (onComplete) onComplete(deck.deckId);
     } catch (err) {
       if (onError) onError(err);

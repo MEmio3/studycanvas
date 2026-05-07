@@ -50,6 +50,15 @@ class EditorView {
       }
     };
     document.addEventListener('presentation-page-end', this.handlePresentationEndBound);
+
+    this.handlePageCreatedBound = (e) => {
+      if (e.detail.deckId === this.deckId) {
+        this.pages.push(e.detail);
+        this.setActivePage(e.detail.pageId);
+        this.topBar.updateCounter(this.pages.length, this.pages.length);
+      }
+    };
+    document.addEventListener('page-created', this.handlePageCreatedBound);
   }
 
   unmount() {
@@ -59,6 +68,7 @@ class EditorView {
     document.removeEventListener('slide-prev', this.handleSlidePrevBound);
     document.removeEventListener('exit-presentation', this.handleExitPresentationBound);
     document.removeEventListener('presentation-page-end', this.handlePresentationEndBound);
+    document.removeEventListener('page-created', this.handlePageCreatedBound);
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
     }
@@ -270,4 +280,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const router = new Router(routes, '');
   router.start();
+
+  // Extension Bridge
+  if (window.chrome && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'save_new_page') {
+        document.dispatchEvent(new CustomEvent('external-capture', { detail: request.payload }));
+      }
+    });
+  }
+
+  document.addEventListener('external-capture', async (e) => {
+    const payload = e.detail;
+    const { getDecks, createDeck } = await import('./store/decks.js');
+    const { createPage, updatePage } = await import('./store/pages.js');
+    const { saveImage } = await import('./store/images.js');
+    const { generateId } = await import('./utils/uuid.js');
+
+    let targetDeckId = null;
+    const hash = window.location.hash;
+    if (hash.startsWith('#deck/')) {
+      targetDeckId = hash.split('/')[1];
+    } else {
+      const decks = await getDecks();
+      if (decks.length > 0) {
+        targetDeckId = decks[0].deckId;
+      } else {
+        const newDeck = await createDeck("Captured Notes");
+        targetDeckId = newDeck.deckId;
+      }
+    }
+
+    const page = await createPage(targetDeckId, `Captured Page`);
+    page.topic = payload.topic || '';
+    page.textBlock.rawText = payload.text || '';
+    page.textBlock.source = payload.source || '';
+
+    if (payload.screenshotDataUrl) {
+      const res = await fetch(payload.screenshotDataUrl);
+      const blob = await res.blob();
+      const storageKey = `img_${generateId()}`;
+      await saveImage(storageKey, blob);
+      
+      page.images = [{
+        storageKey: storageKey,
+        mimeType: 'image/jpeg',
+        annotations: []
+      }];
+    }
+
+    const matches = page.textBlock.rawText.match(/[^.!?]+[.!?]+/g) || (page.textBlock.rawText ? [page.textBlock.rawText] : []);
+    page.textBlock.sentences = matches.map((s, i) => ({
+      index: i,
+      text: s.trim()
+    })).filter(s => s.text.length > 0);
+
+    await updatePage(page);
+    document.dispatchEvent(new CustomEvent('page-created', { detail: page }));
+    
+    // If not in editor, might want to redirect
+    if (!hash.startsWith('#deck/')) {
+       window.location.hash = `#deck/${targetDeckId}`;
+    }
+  });
 });
