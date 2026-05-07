@@ -1,10 +1,14 @@
 import { getImage } from '../store/images.js';
 import { AnnotationLayer } from '../components/AnnotationLayer.js';
+import { getConnectionsForDeck } from '../store/connections.js';
+import { getFlowLayout } from '../store/flowLayout.js';
 
 export async function exportDeckAsJson(deck, pages) {
   const exportData = {
     deck: deck,
-    pages: []
+    pages: [],
+    connections: await getConnectionsForDeck(deck.deckId),
+    flowLayout: await getFlowLayout(deck.deckId)
   };
 
   for (const page of pages) {

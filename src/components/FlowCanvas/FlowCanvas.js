@@ -48,7 +48,15 @@ export class FlowCanvas {
           <svg class="flow-edge-layer" id="flow-edge-layer"></svg>
           <div class="flow-node-layer" id="flow-node-layer"></div>
         </div>
-        <div id="flow-ui-layer"></div>
+        <div id="flow-ui-layer">
+          ${this.pages.length === 0 ? `
+            <div class="flow-empty-state" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--text-secondary); background: var(--bg-surface); padding: 24px; border-radius: 8px; border: 1px dashed var(--border-default);">
+              <i class="ti ti-plug" style="font-size: 32px; margin-bottom: 8px; display: block;"></i>
+              <p>Your canvas is empty.</p>
+              <p style="font-size: 13px; margin-top: 4px;">Click the <b>+</b> button or use the Left Panel to create pages.</p>
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
 
@@ -298,6 +306,11 @@ export class FlowCanvas {
     });
     
     if (this.bulkBar) this.bulkBar.update(this.draggedNodes.length);
+    
+    // Sync LeftPanel active page
+    if (this.draggedNodes.length === 1) {
+      document.dispatchEvent(new CustomEvent('flow-node-selected', { detail: { id: node.page.pageId } }));
+    }
   }
 
   _onNodeDoubleClick(e, node) {

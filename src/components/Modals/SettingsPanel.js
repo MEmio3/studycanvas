@@ -76,6 +76,14 @@ export class SettingsPanel {
           <div class="settings-section" style="margin-bottom: var(--space-24);">
             <h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-12); text-transform: uppercase; letter-spacing: 1px;">Presentation Defaults</h3>
             
+            <div style="margin-bottom: var(--space-16);">
+              <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">Playback Order</label>
+              <select id="setting-playback-order" style="width: 100%; padding: var(--space-8); background: var(--bg-base); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm);">
+                <option value="sidebar" ${this.settings.playbackOrder === 'sidebar' ? 'selected' : ''}>Use sidebar order</option>
+                <option value="flow" ${this.settings.playbackOrder === 'flow' ? 'selected' : ''}>Follow Flow connections</option>
+              </select>
+            </div>
+
             <div style="margin-bottom: var(--space-16); display: flex; align-items: center; justify-content: space-between;">
               <label style="font-size: 14px;">Auto-advance slides</label>
               <input type="checkbox" id="setting-auto-advance" ${this.settings.autoAdvance ? 'checked' : ''}>
@@ -197,6 +205,9 @@ export class SettingsPanel {
     });
     this.container.querySelector('#setting-transition').addEventListener('change', (e) => {
       this.settings.transition = e.target.value;
+    });
+    this.container.querySelector('#setting-playback-order').addEventListener('change', (e) => {
+      this.settings.playbackOrder = e.target.value;
     });
     this.container.querySelector('#setting-annotation-color').addEventListener('change', (e) => {
       this.settings.annotationColor = e.target.value;

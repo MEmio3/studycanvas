@@ -5,6 +5,7 @@ import { LeftPanel } from './components/LeftPanel.js';
 import { SettingsPanel } from './components/Modals/SettingsPanel.js';
 import { getDeck, updateDeck } from './store/decks.js';
 import { getPagesForDeck, createPage, updatePage } from './store/pages.js';
+import { getConnectionsForDeck } from './store/connections.js';
 
 class EditorView {
   constructor(container, params) {
@@ -59,6 +60,11 @@ class EditorView {
       }
     };
     document.addEventListener('page-created', this.handlePageCreatedBound);
+
+    this.handleFlowNodeSelectedBound = (e) => {
+      this.setActivePage(e.detail.id, true); // true = skip canvas render to avoid unmounting FlowCanvas
+    };
+    document.addEventListener('flow-node-selected', this.handleFlowNodeSelectedBound);
   }
 
   unmount() {
@@ -69,6 +75,7 @@ class EditorView {
     document.removeEventListener('exit-presentation', this.handleExitPresentationBound);
     document.removeEventListener('presentation-page-end', this.handlePresentationEndBound);
     document.removeEventListener('page-created', this.handlePageCreatedBound);
+    document.removeEventListener('flow-node-selected', this.handleFlowNodeSelectedBound);
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
     }
@@ -90,21 +97,59 @@ class EditorView {
     }
   }
   
-  handleSlideNext() {
-    if (this.mode !== 'slide') return;
-    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
-    if (idx < this.pages.length - 1) {
+  async handleSlideNext() {
+    if (this.mode !== 'slide' && this.mode !== 'present') return;
+    
+    let nextId = null;
+    const settingsStr = localStorage.getItem('studycanvas_settings');
+    const settings = settingsStr ? JSON.parse(settingsStr) : {};
+    
+    if (settings.playbackOrder === 'flow') {
+      const connections = await getConnectionsForDeck(this.deckId);
+      const seqEdge = connections.find(c => c.type === 'sequence' && c.sourcePageId === this.activePageId);
+      if (seqEdge) {
+        nextId = seqEdge.targetPageId;
+      }
+    }
+    
+    if (!nextId) {
+      const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+      if (idx < this.pages.length - 1) {
+        nextId = this.pages[idx + 1].pageId;
+      }
+    }
+    
+    if (nextId) {
       this.direction = 'right';
-      this.setActivePage(this.pages[idx + 1].pageId);
+      this.setActivePage(nextId);
     }
   }
 
-  handleSlidePrev() {
-    if (this.mode !== 'slide') return;
-    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
-    if (idx > 0) {
+  async handleSlidePrev() {
+    if (this.mode !== 'slide' && this.mode !== 'present') return;
+    
+    let prevId = null;
+    const settingsStr = localStorage.getItem('studycanvas_settings');
+    const settings = settingsStr ? JSON.parse(settingsStr) : {};
+    
+    if (settings.playbackOrder === 'flow') {
+      const connections = await getConnectionsForDeck(this.deckId);
+      const seqEdge = connections.find(c => c.type === 'sequence' && c.targetPageId === this.activePageId);
+      if (seqEdge) {
+        prevId = seqEdge.sourcePageId;
+      }
+    }
+    
+    if (!prevId) {
+      const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+      if (idx > 0) {
+        prevId = this.pages[idx - 1].pageId;
+      }
+    }
+    
+    if (prevId) {
       this.direction = 'left';
-      this.setActivePage(this.pages[idx - 1].pageId);
+      this.setActivePage(prevId);
     }
   }
 
@@ -163,7 +208,7 @@ class EditorView {
     this.renderMainCanvas();
   }
 
-  setActivePage(id) {
+  setActivePage(id, skipCanvasRender = false) {
     const currentIndex = this.pages.findIndex(p => p.pageId === this.activePageId);
     const newIndex = this.pages.findIndex(p => p.pageId === id);
     if (currentIndex !== -1 && newIndex !== -1) {
@@ -172,7 +217,11 @@ class EditorView {
 
     this.activePageId = id;
     this.leftPanel.updatePages(this.pages, this.activePageId);
-    this.renderMainCanvas();
+    
+    if (!skipCanvasRender) {
+      this.renderMainCanvas();
+    }
+    
     const activePage = this.pages.find(p => p.pageId === id);
     if (activePage && this.topBar) {
       this.topBar.setActivePage(activePage);
