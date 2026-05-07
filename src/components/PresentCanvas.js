@@ -17,7 +17,12 @@ export class PresentCanvas {
         <div id="present-progress" style="height: 3px; background: var(--accent-primary); width: 0%; transition: width 0.3s; position: absolute; top: 0; left: 0; z-index: 10;"></div>
 
         <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding-bottom: 20%;">
-          ${imgRecord ? `<img id="present-img" src="" style="max-width: 90%; max-height: 90%; object-fit: contain;">` : `<div style="color: #666;">No image</div>`}
+          ${imgRecord ? `
+            <div id="img-wrapper" style="position: relative; display: inline-block; max-width: 90%; max-height: 90%;">
+              <img id="present-img" src="" style="display: block; max-width: 100%; max-height: 100%; object-fit: contain;">
+              <div id="annotation-layer-container"></div>
+            </div>
+          ` : `<div style="color: #666;">No image</div>`}
         </div>
 
         <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 20%; min-height: 120px; display: flex; flex-direction: column;">
@@ -62,11 +67,23 @@ export class PresentCanvas {
 
   async loadImage(storageKey) {
     const { getImage } = await import('../store/images.js');
+    const { AnnotationLayer } = await import('./AnnotationLayer.js');
     const record = await getImage(storageKey);
     if (record && record.blob) {
       const url = URL.createObjectURL(record.blob);
       const imgEl = this.container.querySelector('#present-img');
-      if (imgEl) imgEl.src = url;
+      if (imgEl) {
+        imgEl.onload = () => {
+          this.annotationLayer = new AnnotationLayer(
+            this.container.querySelector('#annotation-layer-container'),
+            this.page.images[0],
+            this.page,
+            false
+          );
+          this.annotationLayer.render();
+        };
+        imgEl.src = url;
+      }
     }
   }
 
@@ -157,11 +174,19 @@ export class PresentCanvas {
       }
     };
     document.addEventListener('tts-boundary', this.ttsBoundaryHandler);
+
+    this.sentenceActiveHandler = (e) => {
+      if (this.annotationLayer) {
+        this.annotationLayer.setActiveSentence(e.detail.sentenceIndex);
+      }
+    };
+    document.addEventListener('sentence-active', this.sentenceActiveHandler);
   }
 
   unmount() {
     tts.stop();
     document.removeEventListener('keydown', this.keydownHandler);
     document.removeEventListener('tts-boundary', this.ttsBoundaryHandler);
+    document.removeEventListener('sentence-active', this.sentenceActiveHandler);
   }
 }

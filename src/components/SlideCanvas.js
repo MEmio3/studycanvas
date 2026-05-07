@@ -7,14 +7,25 @@ export class SlideCanvas {
   }
 
   render() {
-    const textContent = this.page.textBlock?.rawText || 'No text added yet.';
+    const sentences = this.page.textBlock?.sentences || [];
+    let textHtml = '';
+    if (sentences.length > 0) {
+      textHtml = sentences.map((s, i) => `<span id="sentence-${i}" style="transition: background-color 0.3s;">${s.text}</span>`).join(' ');
+    } else {
+      textHtml = this.page.textBlock?.rawText || 'No text added yet.';
+    }
     const imgRecord = this.page.images.length > 0 ? this.page.images[0] : null;
 
     this.container.innerHTML = `
       <div class="slide-canvas animate-fade-in" style="display: flex; height: 100%; background: var(--bg-base);">
         <div style="flex: 50%; padding: var(--space-24); display: flex; flex-direction: column; border-right: 1px solid var(--border-default);">
           <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #000; border-radius: var(--radius-lg); overflow: hidden;">
-            ${imgRecord ? `<img id="slide-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">` : `<div style="color: var(--text-tertiary);">No image</div>`}
+            ${imgRecord ? `
+              <div id="img-wrapper" style="position: relative; display: inline-block; max-width: 100%; max-height: 100%;">
+                <img id="slide-img" src="" style="display: block; max-width: 100%; max-height: 100%; object-fit: contain;">
+                <div id="annotation-layer-container"></div>
+              </div>
+            ` : `<div style="color: var(--text-tertiary);">No image</div>`}
           </div>
           ${imgRecord && imgRecord.caption ? `<div style="margin-top: var(--space-12); text-align: center;" class="caption-text">${imgRecord.caption}</div>` : ''}
         </div>
@@ -23,7 +34,7 @@ export class SlideCanvas {
             <div class="pill">${this.page.textBlock?.source || 'Manual'}</div>
             <button class="primary icon-only" id="btn-tts-toggle" style="border-radius: 50%; width: 40px; height: 40px;"><i class="ti ti-player-play" id="tts-icon" style="font-size: 24px;"></i></button>
           </div>
-          <div style="font-size: 16px; line-height: 1.8; white-space: pre-wrap;">${textContent}</div>
+          <div style="font-size: 16px; line-height: 1.8; white-space: pre-wrap;" id="slide-text-content">${textHtml}</div>
         </div>
       </div>
     `;
@@ -36,11 +47,28 @@ export class SlideCanvas {
 
   async loadImage(storageKey) {
     const { getImage } = await import('../store/images.js');
+    const { AnnotationLayer } = await import('./AnnotationLayer.js');
     const record = await getImage(storageKey);
     if (record && record.blob) {
       const url = URL.createObjectURL(record.blob);
       const imgEl = this.container.querySelector('#slide-img');
-      if (imgEl) imgEl.src = url;
+      if (imgEl) {
+        imgEl.onload = () => {
+          this.annotationLayer = new AnnotationLayer(
+            this.container.querySelector('#annotation-layer-container'),
+            this.page.images[0],
+            this.page,
+            true, // clickable to scroll
+            (ann) => {
+              if (ann.sentenceIndex >= 0) {
+                document.dispatchEvent(new CustomEvent('scroll-to-sentence', { detail: { sentenceIndex: ann.sentenceIndex } }));
+              }
+            }
+          );
+          this.annotationLayer.render();
+        };
+        imgEl.src = url;
+      }
     }
   }
 
@@ -70,10 +98,21 @@ export class SlideCanvas {
       }
     };
     document.addEventListener('keydown', this.keydownHandler);
+
+    this.scrollToSentenceHandler = (e) => {
+      const span = this.container.querySelector(`#sentence-${e.detail.sentenceIndex}`);
+      if (span) {
+        span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        span.style.backgroundColor = 'var(--bg-hover)';
+        setTimeout(() => span.style.backgroundColor = 'transparent', 2000);
+      }
+    };
+    document.addEventListener('scroll-to-sentence', this.scrollToSentenceHandler);
   }
 
   unmount() {
     tts.stop();
     document.removeEventListener('keydown', this.keydownHandler);
+    document.removeEventListener('scroll-to-sentence', this.scrollToSentenceHandler);
   }
 }

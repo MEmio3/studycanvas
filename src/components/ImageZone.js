@@ -1,5 +1,7 @@
 import { saveImage } from '../store/images.js';
 import { updatePage } from '../store/pages.js';
+import { AnnotationLayer } from './AnnotationLayer.js';
+import { AnnotationEditor } from './AnnotationEditor.js';
 
 export class ImageZone {
   constructor(container, page) {
@@ -29,7 +31,10 @@ export class ImageZone {
             <button class="ghost icon-only" id="btn-add-img" title="Add Image"><i class="ti ti-plus"></i></button>
           </div>
           <div style="flex-grow: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; position: relative;" id="img-display-area">
-             <img id="active-image" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+             <div id="img-wrapper" style="position: relative; display: inline-block; max-width: 100%; max-height: 100%;">
+               <img id="active-image" src="" style="display: block; max-width: 100%; max-height: 100%; object-fit: contain;">
+               <div id="annotation-layer-container"></div>
+             </div>
           </div>
           <div style="padding: var(--space-12); border-top: 1px solid var(--border-default); background: var(--bg-surface);">
             <input type="text" placeholder="Add image caption..." value="${img.caption || ''}" id="img-caption">
@@ -47,7 +52,22 @@ export class ImageZone {
     if (imageRecord && imageRecord.blob) {
       const url = URL.createObjectURL(imageRecord.blob);
       const imgEl = this.container.querySelector('#active-image');
-      if (imgEl) imgEl.src = url;
+      if (imgEl) {
+        imgEl.onload = () => {
+          this.annotationLayer = new AnnotationLayer(
+            this.container.querySelector('#annotation-layer-container'),
+            this.page.images[0],
+            this.page,
+            true, // isEditable
+            (ann, idx) => {
+              const editor = new AnnotationEditor(this.page, this.page.images[0], ann, idx, () => this.render(), null);
+              editor.render();
+            }
+          );
+          this.annotationLayer.render();
+        };
+        imgEl.src = url;
+      }
     }
   }
 
