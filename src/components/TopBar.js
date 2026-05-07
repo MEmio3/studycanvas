@@ -100,6 +100,13 @@ export class TopBar {
       });
     }
 
+    const settingsBtn = this.container.querySelector('#btn-settings');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('open-settings'));
+      });
+    }
+
     this.container.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const mode = e.target.getAttribute('data-mode');

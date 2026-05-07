@@ -2,6 +2,7 @@ import { Router } from './router.js';
 import { DeckManager } from './components/DeckManager.js';
 import { TopBar } from './components/TopBar.js';
 import { LeftPanel } from './components/LeftPanel.js';
+import { SettingsPanel } from './components/Modals/SettingsPanel.js';
 import { getDeck, updateDeck } from './store/decks.js';
 import { getPagesForDeck, createPage, updatePage } from './store/pages.js';
 
@@ -221,6 +222,11 @@ const routes = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  const settingsContainer = document.createElement('div');
+  document.body.appendChild(settingsContainer);
+  const settingsPanel = new SettingsPanel(settingsContainer);
+  settingsPanel.render();
+
   const router = new Router(routes, '');
   router.start();
 });

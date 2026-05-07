@@ -10,7 +10,21 @@ export class TTSEngine {
     if (!text || !text.trim()) return;
     
     this.currentUtterance = new SpeechSynthesisUtterance(text);
-    this.currentUtterance.rate = parseFloat(localStorage.getItem('studycanvas_settings_tts_speed')) || 1.0;
+    
+    const settingsStr = localStorage.getItem('studycanvas_settings');
+    if (settingsStr) {
+      const s = JSON.parse(settingsStr);
+      if (s.ttsSpeed) this.currentUtterance.rate = s.ttsSpeed;
+      if (s.ttsVoice) {
+         let voices = window.speechSynthesis.getVoices();
+         const selectedVoice = voices.find(v => v.voiceURI === s.ttsVoice);
+         if (selectedVoice) {
+           this.currentUtterance.voice = selectedVoice;
+         }
+      }
+    } else {
+      this.currentUtterance.rate = parseFloat(localStorage.getItem('studycanvas_settings_tts_speed')) || 1.0;
+    }
     
     this.currentUtterance.onboundary = (event) => {
       if (event.name === 'word') {

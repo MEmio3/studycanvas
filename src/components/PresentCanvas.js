@@ -9,6 +9,22 @@ export class PresentCanvas {
     this.activeImageIndex = 0;
   }
 
+  triggerPageEnd() {
+    const settingsStr = localStorage.getItem('studycanvas_settings');
+    let autoAdvance = true;
+    let delay = 2000;
+    if (settingsStr) {
+       const s = JSON.parse(settingsStr);
+       autoAdvance = s.autoAdvance !== false;
+       if (s.autoAdvanceDelay) delay = s.autoAdvanceDelay;
+    }
+    if (autoAdvance) {
+      setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('presentation-page-end'));
+      }, delay);
+    }
+  }
+
   async render() {
     const imgRecord = this.page.images.length > 0 ? this.page.images[this.activeImageIndex] : null;
 
@@ -101,7 +117,7 @@ export class PresentCanvas {
       const text = this.page.textBlock?.rawText || '';
       tts.play(text, () => {
         this.controls.setPlayingState(false);
-        document.dispatchEvent(new CustomEvent('presentation-page-end'));
+        this.triggerPageEnd();
       });
       return;
     }
@@ -114,7 +130,7 @@ export class PresentCanvas {
     const sentences = this.page.textBlock?.sentences || [];
     if (this.currentSentenceIndex >= sentences.length) {
       this.controls.setPlayingState(false);
-      document.dispatchEvent(new CustomEvent('presentation-page-end'));
+      this.triggerPageEnd();
       return;
     }
 
