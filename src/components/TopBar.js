@@ -40,6 +40,7 @@ export class TopBar {
           <button class="mode-btn ${this.currentMode === 'edit' ? 'primary' : 'ghost'}" data-mode="edit" style="border: none; padding: var(--space-4) var(--space-12);">Edit</button>
           <button class="mode-btn ${this.currentMode === 'slide' ? 'primary' : 'ghost'}" data-mode="slide" style="border: none; padding: var(--space-4) var(--space-12);">Slide</button>
           <button class="mode-btn ${this.currentMode === 'present' ? 'primary' : 'ghost'}" data-mode="present" style="border: none; padding: var(--space-4) var(--space-12);">Present</button>
+          <button class="mode-btn ${this.currentMode === 'flow' ? 'primary' : 'ghost'}" data-mode="flow" style="border: none; padding: var(--space-4) var(--space-12);"><i class="ti ti-sitemap" style="margin-right: 4px;"></i>Flow</button>
         </div>
       </div>
     `;
@@ -48,7 +49,13 @@ export class TopBar {
 
   updateCounter(current, total) {
     const counter = this.container.querySelector('#tb-counter');
-    if (counter) counter.textContent = `Page ${current} of ${total}`;
+    if (counter) {
+      if (this.currentMode === 'flow') {
+        counter.textContent = '';
+      } else {
+        counter.textContent = `Page ${current} of ${total}`;
+      }
+    }
   }
 
   attachEvents() {

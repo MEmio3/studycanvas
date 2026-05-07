@@ -25,7 +25,8 @@ export async function createPage(deckId, title = "Untitled Page") {
     notes: "",
     isFlagged: false,
     reviewCount: 0,
-    lastReviewedAt: null
+    lastReviewedAt: null,
+    flowPosition: null
   };
 
   await db.put('pages', page);

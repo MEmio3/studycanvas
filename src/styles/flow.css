@@ -1,0 +1,637 @@
+/* ======================================================
+   Flow View — All styles for the node graph canvas
+   ====================================================== */
+
+/* Canvas Variables */
+:root {
+  --flow-bg: #0F1117;
+  --flow-dot-color: rgba(255, 255, 255, 0.06);
+  --flow-dot-size: 1px;
+  --flow-dot-spacing: 24px;
+
+  --node-bg: #1A1E2A;
+  --node-border: #2A2E3A;
+  --node-border-hover: #3A4A44;
+  --node-border-selected: #1D9E75;
+  --node-shadow-selected: rgba(29, 158, 117, 0.35);
+  --node-thumbnail-placeholder: #2A2E3A;
+
+  --edge-sequence: #1D9E75;
+  --edge-reference: #5A7A6E;
+  --edge-branch: #D4A017;
+  --edge-ghost: rgba(29, 158, 117, 0.5);
+  --edge-label-bg: rgba(26, 30, 42, 0.9);
+
+  --port-default-bg: #2A2E3A;
+  --port-default-border: #3A3F4E;
+  --port-hover: #1D9E75;
+  --port-invalid: #E05252;
+
+  --minimap-bg: rgba(15, 17, 23, 0.9);
+  --minimap-border: #2A2E3A;
+  --minimap-node: #3A3F4E;
+  --minimap-node-with-topic: #1D9E75;
+  --minimap-viewport: rgba(29, 158, 117, 0.25);
+  --minimap-viewport-border: #1D9E75;
+}
+
+/* ─── Canvas Surface ─── */
+.flow-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--flow-bg);
+  background-image: radial-gradient(circle, var(--flow-dot-color) var(--flow-dot-size), transparent var(--flow-dot-size));
+  background-size: var(--flow-dot-spacing) var(--flow-dot-spacing);
+  cursor: grab;
+  user-select: none;
+}
+
+.flow-canvas-wrapper.panning {
+  cursor: grabbing;
+}
+
+.flow-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ─── SVG Edge Layer ─── */
+.flow-edge-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.flow-edge-layer path {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.flow-edge-layer path:hover {
+  stroke-width: 3;
+}
+
+/* ─── Node ─── */
+.flow-node {
+  position: absolute;
+  width: 220px;
+  height: 130px;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  border-radius: 10px;
+  display: flex;
+  padding: 10px;
+  gap: 10px;
+  cursor: default;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  z-index: 1;
+}
+
+.flow-node:hover {
+  border-color: var(--node-border-hover);
+  box-shadow: 0 0 0 2px rgba(29, 158, 117, 0.2);
+}
+
+.flow-node.selected {
+  border: 2px solid var(--node-border-selected);
+  box-shadow: 0 0 0 3px var(--node-shadow-selected);
+}
+
+.flow-node.dragging {
+  opacity: 0.85;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  cursor: grabbing;
+}
+
+.flow-node.active-page {
+  border-left: 4px solid var(--node-border-selected);
+}
+
+.flow-node.no-content {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.flow-node .node-thumbnail {
+  width: 60px;
+  height: 45px;
+  background: var(--node-thumbnail-placeholder);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.flow-node .node-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flow-node .node-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.flow-node .node-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-node .node-topic {
+  font-size: 10px;
+  color: var(--accent-primary);
+  background: rgba(29, 158, 117, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-node .node-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-node .node-order {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 20px;
+  height: 20px;
+  background: #2A2E3A;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  border: 1px solid var(--node-border);
+  z-index: 2;
+}
+
+.flow-node .node-flag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: #D4A017;
+  font-size: 14px;
+}
+
+.flow-node .node-start-badge {
+  position: absolute;
+  top: 4px;
+  left: 28px;
+  font-size: 9px;
+  color: var(--accent-primary);
+  background: rgba(29, 158, 117, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ─── Ports ─── */
+.flow-port {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--port-default-bg);
+  border: 2px solid var(--port-default-border);
+  border-radius: 50%;
+  z-index: 3;
+  cursor: crosshair;
+  transition: all 0.15s;
+}
+
+.flow-port.input {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.flow-port.output {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.flow-port:hover, .flow-port.highlight {
+  width: 14px;
+  height: 14px;
+  background: var(--port-hover);
+  border-color: var(--port-hover);
+}
+
+.flow-port.input:hover, .flow-port.input.highlight {
+  left: -8px;
+}
+
+.flow-port.output:hover, .flow-port.output.highlight {
+  right: -8px;
+}
+
+.flow-port.invalid {
+  background: var(--port-invalid);
+  border-color: var(--port-invalid);
+}
+
+/* Port hit area — larger invisible click target */
+.flow-port::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+}
+
+/* ─── Minimap ─── */
+.flow-minimap {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 180px;
+  height: 110px;
+  background: var(--minimap-bg);
+  border: 1px solid var(--minimap-border);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.flow-minimap canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.flow-minimap-toggle {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  z-index: 51;
+}
+
+/* ─── Floating Toolbar ─── */
+.flow-toolbar {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 50;
+}
+
+.flow-toolbar button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.15s;
+}
+
+.flow-toolbar button:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+
+.flow-toolbar button.active {
+  background: rgba(29,158,117,0.15);
+  color: #1D9E75;
+  border: 1px solid rgba(29,158,117,0.4);
+}
+
+.flow-toolbar button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.flow-toolbar .divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: 4px 0;
+}
+
+/* ─── Zoom Controls ─── */
+.flow-zoom-controls {
+  position: absolute;
+  bottom: 140px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 50;
+}
+
+.flow-zoom-controls button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.flow-zoom-controls button:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+
+.flow-zoom-controls .zoom-level {
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* ─── Connection Type Popup ─── */
+.flow-popup {
+  position: absolute;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  padding: 16px;
+  z-index: 200;
+  min-width: 280px;
+}
+
+.flow-popup h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.flow-popup .radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.flow-popup .radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.flow-popup .radio-group label:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.flow-popup input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.flow-popup .popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ─── Bulk Action Bar ─── */
+.flow-bulk-bar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 8px 16px;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.flow-bulk-bar span {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.flow-bulk-bar button {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flow-bulk-bar button:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.flow-bulk-bar button.danger {
+  color: #E05252;
+  border-color: rgba(224, 82, 82, 0.3);
+}
+
+/* ─── Connection Summary Panel ─── */
+.flow-summary-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border-default);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  overflow-y: auto;
+  z-index: 60;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+
+.flow-summary-panel.open {
+  transform: translateX(0);
+}
+
+.flow-summary-panel h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.flow-summary-panel .conn-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+  margin: 12px 0 6px;
+}
+
+.flow-summary-panel .conn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.flow-summary-panel .conn-row:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+/* ─── Hint Banner ─── */
+.flow-hint-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(29, 158, 117, 0.1);
+  border: 1px solid rgba(29, 158, 117, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 40;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.flow-hint-banner button {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ─── Empty State ─── */
+.flow-empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.flow-empty-state i {
+  font-size: 64px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.flow-empty-state p {
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* ─── Rubber Band Selection ─── */
+.flow-rubber-band {
+  position: absolute;
+  border: 1px solid var(--edge-sequence);
+  background: rgba(29, 158, 117, 0.08);
+  pointer-events: none;
+  z-index: 200;
+}
+
+/* ─── Context Menu ─── */
+.flow-context-menu {
+  position: absolute;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  padding: 6px;
+  z-index: 300;
+  min-width: 180px;
+}
+
+.flow-context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.flow-context-menu button:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.flow-context-menu .separator {
+  height: 1px;
+  background: var(--border-default);
+  margin: 4px 0;
+}

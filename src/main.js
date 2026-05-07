@@ -263,6 +263,13 @@ class EditorView {
         this.currentCanvasComponent = new PresentCanvas(canvasContainer, activePage);
         this.currentCanvasComponent.render();
       });
+    } else if (this.mode === 'flow') {
+      // Flow View — render the node graph canvas
+      import('./components/FlowCanvas/FlowCanvas.js').then(({ FlowCanvas }) => {
+        this.currentCanvasComponent = new FlowCanvas(canvasContainer, this.deckId, this.pages);
+        this.currentCanvasComponent.render();
+      });
+      return; // Don't run the per-page logic below
     }
   }
 }
