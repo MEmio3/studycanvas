@@ -1,3 +1,4 @@
+export class TopBar {
   constructor(container, deck, activePage, onModeChange, onTopicChange, onFlagChange) {
     this.container = container;
     this.deck = deck;

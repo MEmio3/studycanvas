@@ -14,6 +14,7 @@ class EditorView {
     this.pages = [];
     this.activePageId = null;
     this.mode = 'edit';
+    this.direction = 'right';
   }
 
   async mount() {
@@ -83,6 +84,7 @@ class EditorView {
     if (this.mode !== 'slide') return;
     const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
     if (idx < this.pages.length - 1) {
+      this.direction = 'right';
       this.setActivePage(this.pages[idx + 1].pageId);
     }
   }
@@ -91,6 +93,7 @@ class EditorView {
     if (this.mode !== 'slide') return;
     const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
     if (idx > 0) {
+      this.direction = 'left';
       this.setActivePage(this.pages[idx - 1].pageId);
     }
   }
@@ -151,6 +154,12 @@ class EditorView {
   }
 
   setActivePage(id) {
+    const currentIndex = this.pages.findIndex(p => p.pageId === this.activePageId);
+    const newIndex = this.pages.findIndex(p => p.pageId === id);
+    if (currentIndex !== -1 && newIndex !== -1) {
+      this.direction = newIndex > currentIndex ? 'right' : 'left';
+    }
+
     this.activePageId = id;
     this.leftPanel.updatePages(this.pages, this.activePageId);
     this.renderMainCanvas();
@@ -185,6 +194,28 @@ class EditorView {
   renderMainCanvas() {
     const canvasContainer = this.container.querySelector('#main-canvas-container');
     const activePage = this.pages.find(p => p.pageId === this.activePageId);
+    
+    canvasContainer.classList.remove('animate-slide-in-right', 'animate-slide-in-left', 'animate-fade-in');
+    void canvasContainer.offsetWidth; // Force reflow
+    
+    let transitionClass = '';
+    const settingsStr = localStorage.getItem('studycanvas_settings');
+    if (settingsStr) {
+      const s = JSON.parse(settingsStr);
+      if (s.transition === 'slide') {
+         transitionClass = this.direction === 'left' ? 'animate-slide-in-left' : 'animate-slide-in-right';
+      } else if (s.transition === 'fade') {
+         transitionClass = 'animate-fade-in';
+      }
+    } else {
+      transitionClass = this.direction === 'left' ? 'animate-slide-in-left' : 'animate-slide-in-right';
+    }
+    
+    if (transitionClass) {
+       canvasContainer.classList.add(transitionClass);
+    }
+    
+    this.direction = 'right'; // default reset
     
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
