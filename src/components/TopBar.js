@@ -1,10 +1,10 @@
-export class TopBar {
-  constructor(container, deck, activePage, onModeChange, onTopicChange) {
+  constructor(container, deck, activePage, onModeChange, onTopicChange, onFlagChange) {
     this.container = container;
     this.deck = deck;
     this.activePage = activePage;
     this.onModeChange = onModeChange;
     this.onTopicChange = onTopicChange;
+    this.onFlagChange = onFlagChange;
     this.currentMode = 'edit';
   }
 
@@ -20,6 +20,9 @@ export class TopBar {
         <div class="deck-title" style="flex-grow: 1; margin: 0 var(--space-24); display: flex; align-items: center; gap: var(--space-12);">
           <input type="text" id="tb-deck-title" value="${this.deck.title}" style="background: transparent; border: none; font-size: 16px; font-weight: 600; padding: var(--space-4); width: 100%; max-width: 400px;" placeholder="Untitled Deck">
           <input type="text" id="tb-page-topic" value="${this.activePage?.topic || ''}" style="background: var(--bg-base); border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 12px; padding: var(--space-4) var(--space-8); width: 120px;" placeholder="Add topic...">
+          <button class="ghost icon-only" id="btn-flag-page" title="Flag this page" style="color: ${this.activePage?.isFlagged ? 'var(--amber)' : 'inherit'};">
+            <i class="ti ${this.activePage?.isFlagged ? 'ti-star-filled' : 'ti-star'}"></i>
+          </button>
         </div>
         <div class="page-counter meta-text" style="margin-right: var(--space-24);" id="tb-counter">
           Page 1 of ${this.deck.pages.length}
@@ -64,6 +67,17 @@ export class TopBar {
     if (topicInput) {
       topicInput.addEventListener('blur', () => {
         if (this.onTopicChange) this.onTopicChange(topicInput.value);
+      });
+    }
+
+    const flagBtn = this.container.querySelector('#btn-flag-page');
+    if (flagBtn) {
+      flagBtn.addEventListener('click', () => {
+        if (this.activePage) {
+           this.activePage.isFlagged = !this.activePage.isFlagged;
+           if (this.onFlagChange) this.onFlagChange(this.activePage.isFlagged);
+           this.render();
+        }
       });
     }
 

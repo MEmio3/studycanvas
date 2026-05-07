@@ -16,7 +16,10 @@ export function renderPageCard(page, isActive) {
         <i class="ti ti-photo" style="color: var(--text-tertiary); font-size: 20px;"></i>
       </div>
       <div class="details" style="flex-grow: 1; min-width: 0;">
-        <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${page.title || "Untitled Page"}</div>
+        <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between;">
+          <span style="overflow: hidden; text-overflow: ellipsis;">${page.title || "Untitled Page"}</span>
+          ${page.isFlagged ? '<i class="ti ti-star-filled" style="color: var(--amber); font-size: 12px; margin-left: 4px; flex-shrink: 0;"></i>' : ''}
+        </div>
         ${page.topic ? `<div class="pill" style="margin-top: 4px;">${page.topic}</div>` : ''}
       </div>
     </div>

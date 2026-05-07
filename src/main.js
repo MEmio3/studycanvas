@@ -123,6 +123,16 @@ class EditorView {
             this.leftPanel.updatePages(this.pages, this.activePageId);
           });
         }
+      },
+      async (isFlagged) => {
+        const page = this.pages.find(p => p.pageId === this.activePageId);
+        if (page) {
+          page.isFlagged = isFlagged;
+          import('./store/pages.js').then(async ({ updatePage }) => {
+            await updatePage(page);
+            this.leftPanel.updatePages(this.pages, this.activePageId);
+          });
+        }
       }
     );
     this.topBar.render();
