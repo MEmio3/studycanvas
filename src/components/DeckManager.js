@@ -39,6 +39,7 @@ export class DeckManager {
           </div>
           <div class="deck-manager-actions" style="display: flex; gap: var(--space-12);">
             <button class="ghost" id="btn-import"><i class="ti ti-file-import"></i> Import</button>
+            <input type="file" id="import-json-input" accept=".json" style="display: none;">
             <button class="primary" id="btn-new-deck"><i class="ti ti-plus"></i> New Deck</button>
           </div>
         </div>
@@ -99,6 +100,25 @@ export class DeckManager {
             card.style.display = 'none';
           }
         });
+      });
+    }
+
+    const importBtn = this.container.querySelector('#btn-import');
+    const importInput = this.container.querySelector('#import-json-input');
+    if (importBtn && importInput) {
+      importBtn.addEventListener('click', () => importInput.click());
+      importInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const { importDeckFromJson } = await import('../services/import.js');
+        importDeckFromJson(file, (newDeckId) => {
+          this.loadDecks();
+          alert('Deck imported successfully!');
+        }, (err) => {
+          alert('Failed to import deck: ' + err.message);
+        });
+        importInput.value = ''; // Reset input
       });
     }
 

@@ -25,6 +25,14 @@ export class TopBar {
           Page 1 of ${this.deck.pages.length}
         </div>
         <div class="mode-switch" style="display: flex; background: var(--bg-base); border-radius: var(--radius-md); padding: 2px;">
+          <div style="position: relative;" id="export-dropdown-wrapper">
+            <button class="ghost icon-only" id="btn-export" title="Export Deck"><i class="ti ti-download"></i></button>
+            <div id="export-dropdown" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100; min-width: 180px; padding: var(--space-8); flex-direction: column; gap: 4px;">
+              <button class="ghost" id="btn-export-json" style="width: 100%; text-align: left; justify-content: flex-start;"><i class="ti ti-json" style="margin-right: 8px;"></i> As JSON (Backup)</button>
+              <button class="ghost" id="btn-export-pdf" style="width: 100%; text-align: left; justify-content: flex-start;"><i class="ti ti-file-type-pdf" style="margin-right: 8px;"></i> As PDF Summary</button>
+            </div>
+          </div>
+          <button class="ghost icon-only" id="btn-settings" title="Settings"><i class="ti ti-settings"></i></button>
           <button class="mode-btn ${this.currentMode === 'edit' ? 'primary' : 'ghost'}" data-mode="edit" style="border: none; padding: var(--space-4) var(--space-12);">Edit</button>
           <button class="mode-btn ${this.currentMode === 'slide' ? 'primary' : 'ghost'}" data-mode="slide" style="border: none; padding: var(--space-4) var(--space-12);">Slide</button>
           <button class="mode-btn ${this.currentMode === 'present' ? 'primary' : 'ghost'}" data-mode="present" style="border: none; padding: var(--space-4) var(--space-12);">Present</button>
@@ -56,6 +64,39 @@ export class TopBar {
     if (topicInput) {
       topicInput.addEventListener('blur', () => {
         if (this.onTopicChange) this.onTopicChange(topicInput.value);
+      });
+    }
+
+    const exportBtn = this.container.querySelector('#btn-export');
+    const exportDropdown = this.container.querySelector('#export-dropdown');
+    
+    if (exportBtn && exportDropdown) {
+      exportBtn.addEventListener('click', (e) => {
+        exportDropdown.style.display = exportDropdown.style.display === 'none' ? 'flex' : 'none';
+        e.stopPropagation();
+      });
+      document.addEventListener('click', () => {
+        exportDropdown.style.display = 'none';
+      });
+    }
+
+    const jsonBtn = this.container.querySelector('#btn-export-json');
+    if (jsonBtn) {
+      jsonBtn.addEventListener('click', async () => {
+        const { exportDeckAsJson } = await import('../services/export.js');
+        const { getAllPagesForDeck } = await import('../store/pages.js');
+        const pages = await getAllPagesForDeck(this.deck.deckId);
+        await exportDeckAsJson(this.deck, pages);
+      });
+    }
+
+    const pdfBtn = this.container.querySelector('#btn-export-pdf');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', async () => {
+        const { exportDeckAsPdf } = await import('../services/export.js');
+        const { getAllPagesForDeck } = await import('../store/pages.js');
+        const pages = await getAllPagesForDeck(this.deck.deckId);
+        await exportDeckAsPdf(this.deck, pages);
       });
     }
 
