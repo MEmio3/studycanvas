@@ -12,6 +12,17 @@ export class TTSEngine {
     this.currentUtterance = new SpeechSynthesisUtterance(text);
     this.currentUtterance.rate = parseFloat(localStorage.getItem('studycanvas_settings_tts_speed')) || 1.0;
     
+    this.currentUtterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        const charIndex = event.charIndex;
+        const textUpToChar = text.substring(0, charIndex);
+        const wordIndex = (textUpToChar.match(/\s+/g) || []).length;
+        document.dispatchEvent(new CustomEvent('tts-boundary', {
+          detail: { wordIndex }
+        }));
+      }
+    };
+    
     this.currentUtterance.onend = () => {
       this.isPlaying = false;
       if (onEnd) onEnd();

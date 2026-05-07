@@ -71,15 +71,41 @@ export class PresentCanvas {
   }
 
   startPlay() {
-    const text = this.page.textBlock?.rawText || '';
-    tts.play(text, () => {
+    this.controls.setPlayingState(true);
+    const sentences = this.page.textBlock?.sentences || [];
+    
+    if (sentences.length === 0) {
+      const text = this.page.textBlock?.rawText || '';
+      tts.play(text, () => {
+        this.controls.setPlayingState(false);
+        document.dispatchEvent(new CustomEvent('presentation-page-end'));
+      });
+      return;
+    }
+
+    this.currentSentenceIndex = 0;
+    this.playNextSentence();
+  }
+
+  playNextSentence() {
+    const sentences = this.page.textBlock?.sentences || [];
+    if (this.currentSentenceIndex >= sentences.length) {
       this.controls.setPlayingState(false);
       document.dispatchEvent(new CustomEvent('presentation-page-end'));
-    });
-    this.controls.setPlayingState(true);
-    if (this.page.textBlock?.sentences?.length > 0 || this.page.textBlock?.rawText) {
-      this.subtitleBar.updateProgress(0, -1);
+      return;
     }
+
+    const sentence = sentences[this.currentSentenceIndex];
+    this.subtitleBar.updateProgress(this.currentSentenceIndex, -1);
+    
+    document.dispatchEvent(new CustomEvent('sentence-active', { detail: { sentenceIndex: this.currentSentenceIndex } }));
+
+    tts.play(sentence.text, () => {
+      if (this.controls.isPlaying) {
+         this.currentSentenceIndex++;
+         this.playNextSentence();
+      }
+    });
   }
 
   togglePlay() {
@@ -89,16 +115,17 @@ export class PresentCanvas {
     } else {
       if (tts.synth.paused) {
         tts.resume();
+        this.controls.setPlayingState(true);
       } else {
         this.startPlay();
       }
-      this.controls.setPlayingState(true);
     }
   }
 
   stopPlay() {
     tts.stop();
     this.controls.setPlayingState(false);
+    this.currentSentenceIndex = 0;
     this.subtitleBar.updateProgress(-1, -1);
   }
 
@@ -123,10 +150,18 @@ export class PresentCanvas {
       }
     };
     document.addEventListener('keydown', this.keydownHandler);
+
+    this.ttsBoundaryHandler = (e) => {
+      if (this.controls.isPlaying && this.currentSentenceIndex !== undefined) {
+         this.subtitleBar.updateProgress(this.currentSentenceIndex, e.detail.wordIndex);
+      }
+    };
+    document.addEventListener('tts-boundary', this.ttsBoundaryHandler);
   }
 
   unmount() {
     tts.stop();
     document.removeEventListener('keydown', this.keydownHandler);
+    document.removeEventListener('tts-boundary', this.ttsBoundaryHandler);
   }
 }
