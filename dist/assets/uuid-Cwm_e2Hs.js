@@ -1,0 +1,1 @@
+import{t as e}from"./rolldown-runtime-lhHHWwHU.js";var t=e({generateId:()=>n});function n(){return crypto.randomUUID()}export{t as n,n as t};

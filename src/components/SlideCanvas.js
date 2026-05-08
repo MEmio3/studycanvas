@@ -37,7 +37,14 @@ export class SlideCanvas {
         </div>
         <div style="flex: 50%; padding: var(--space-32); overflow-y: auto;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-            <div class="pill">${this.page.textBlock?.source || 'Manual'}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="pill">${this.page.textBlock?.source || 'Manual'}</div>
+              ${this.page.videoTimestamp ? `
+                <div class="pill" style="cursor: pointer; background: rgba(29, 158, 117, 0.1); color: var(--watch-complete-color); border: 1px solid var(--watch-complete-color);" onclick="document.dispatchEvent(new CustomEvent('app-watch-jump', { detail: { videoId: '${this.page.videoTimestamp.videoId}', time: ${this.page.videoTimestamp.seconds} } }))">
+                  <i class="ti ti-brand-youtube"></i> ${this.page.videoTimestamp.formatted}
+                </div>
+              ` : ''}
+            </div>
             <button class="primary icon-only" id="btn-tts-toggle" style="border-radius: 50%; width: 40px; height: 40px;"><i class="ti ti-player-play" id="tts-icon" style="font-size: 24px;"></i></button>
           </div>
           <div style="font-size: 16px; line-height: 1.8; white-space: pre-wrap;" id="slide-text-content">${textHtml}</div>

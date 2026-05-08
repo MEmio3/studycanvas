@@ -2,8 +2,6 @@ import { updateDeck } from '../store/decks.js';
 import { updatePage } from '../store/pages.js';
 import { saveImage } from '../store/images.js';
 import { generateId } from '../utils/uuid.js';
-import { createConnection } from '../store/connections.js';
-import { saveFlowLayout } from '../store/flowLayout.js';
 
 export function importDeckFromJson(file, onComplete, onError) {
   const reader = new FileReader();
@@ -50,29 +48,6 @@ export function importDeckFromJson(file, onComplete, onError) {
       }
 
       await updateDeck(deck);
-
-      // Import Connections
-      if (data.connections && Array.isArray(data.connections)) {
-        for (const conn of data.connections) {
-          const newSourceId = oldToNewPageMap[conn.sourcePageId];
-          const newTargetId = oldToNewPageMap[conn.targetPageId];
-          if (newSourceId && newTargetId) {
-            await createConnection(newDeckId, newSourceId, newTargetId, conn.type, conn.label, conn.color);
-          }
-        }
-      }
-
-      // Import Flow Layout
-      if (data.flowLayout) {
-        const newPositions = {};
-        if (data.flowLayout.nodes) {
-          for (const [oldId, pos] of Object.entries(data.flowLayout.nodes)) {
-            const newId = oldToNewPageMap[oldId];
-            if (newId) newPositions[newId] = pos;
-          }
-        }
-        await saveFlowLayout(newDeckId, newPositions, data.flowLayout.viewport || { x: 0, y: 0, zoom: 1.0 });
-      }
 
       if (onComplete) onComplete(deck.deckId);
     } catch (err) {

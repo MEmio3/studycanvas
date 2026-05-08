@@ -18,14 +18,17 @@ export class TopBar {
     this.container.innerHTML = `
       <div class="top-bar flex-between" style="padding: var(--space-12) var(--space-24); border-bottom: 1px solid var(--border-default); background: var(--bg-surface);">
         <div class="logo-text" style="cursor: pointer;" id="tb-logo">study<span>canvas</span></div>
-        <div class="deck-title" style="flex-grow: 1; margin: 0 var(--space-24); display: flex; align-items: center; gap: var(--space-12);">
-          <input type="text" id="tb-deck-title" value="${this.deck.title}" style="background: transparent; border: none; font-size: 16px; font-weight: 600; padding: var(--space-4); width: 100%; max-width: 400px;" placeholder="Untitled Deck">
-          <input type="text" id="tb-page-topic" value="${this.activePage?.topic || ''}" style="background: var(--bg-base); border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 12px; padding: var(--space-4) var(--space-8); width: 120px;" placeholder="Add topic...">
-          <button class="ghost icon-only" id="btn-flag-page" title="Flag this page" style="color: ${this.activePage?.isFlagged ? 'var(--amber)' : 'inherit'};">
-            <i class="ti ${this.activePage?.isFlagged ? 'ti-star-filled' : 'ti-star'}"></i>
-          </button>
+        <div class="deck-title" style="flex-grow: 1; margin: 0 var(--space-24); display: flex; flex-direction: column; justify-content: center;">
+          <div style="display: flex; align-items: center; gap: var(--space-12);">
+            <input type="text" id="tb-deck-title" value="${this.deck.title}" style="background: transparent; border: none; font-size: 16px; font-weight: 600; padding: var(--space-4); width: 100%; max-width: 400px;" placeholder="Untitled Deck">
+            <input type="text" id="tb-page-topic" value="${this.activePage?.topic || ''}" style="background: var(--bg-base); border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 12px; padding: var(--space-4) var(--space-8); width: 120px;" placeholder="Add topic...">
+            <button class="ghost icon-only" id="btn-flag-page" title="Flag this page" style="color: ${this.activePage?.isFlagged ? 'var(--amber)' : 'inherit'};">
+              <i class="ti ${this.activePage?.isFlagged ? 'ti-star-filled' : 'ti-star'}"></i>
+            </button>
+          </div>
+          <div id="tb-playlist-title" style="font-size: 11px; color: var(--text-secondary); margin-left: 4px; display: none;">📋 Playlist Name</div>
         </div>
-        <div class="page-counter meta-text" style="margin-right: var(--space-24);" id="tb-counter">
+        <div class="page-counter meta-text" style="margin-right: var(--space-24); font-size: 13px;" id="tb-counter">
           Page 1 of ${this.deck.pages.length}
         </div>
         <div class="mode-switch" style="display: flex; background: var(--bg-base); border-radius: var(--radius-md); padding: 2px;">
@@ -40,7 +43,7 @@ export class TopBar {
           <button class="mode-btn ${this.currentMode === 'edit' ? 'primary' : 'ghost'}" data-mode="edit" style="border: none; padding: var(--space-4) var(--space-12);">Edit</button>
           <button class="mode-btn ${this.currentMode === 'slide' ? 'primary' : 'ghost'}" data-mode="slide" style="border: none; padding: var(--space-4) var(--space-12);">Slide</button>
           <button class="mode-btn ${this.currentMode === 'present' ? 'primary' : 'ghost'}" data-mode="present" style="border: none; padding: var(--space-4) var(--space-12);">Present</button>
-          <button class="mode-btn ${this.currentMode === 'flow' ? 'primary' : 'ghost'}" data-mode="flow" style="border: none; padding: var(--space-4) var(--space-12);"><i class="ti ti-sitemap" style="margin-right: 4px;"></i>Flow</button>
+          <button class="mode-btn ${this.currentMode === 'watch' ? 'primary' : 'ghost'}" data-mode="watch" style="border: none; padding: var(--space-4) var(--space-12);"><i class="ti ti-brand-youtube" style="margin-right: 4px;"></i>Watch</button>
         </div>
       </div>
     `;
@@ -50,10 +53,25 @@ export class TopBar {
   updateCounter(current, total) {
     const counter = this.container.querySelector('#tb-counter');
     if (counter) {
-      if (this.currentMode === 'flow') {
-        counter.textContent = '';
+      counter.textContent = `Page ${current} of ${total}`;
+    }
+  }
+
+  setWatchProgressText(text) {
+    const counter = this.container.querySelector('#tb-counter');
+    if (counter) {
+      counter.textContent = text;
+    }
+  }
+
+  setPlaylistTitle(title) {
+    const pt = this.container.querySelector('#tb-playlist-title');
+    if (pt) {
+      if (title) {
+        pt.textContent = `📋 ${title}`;
+        pt.style.display = 'block';
       } else {
-        counter.textContent = `Page ${current} of ${total}`;
+        pt.style.display = 'none';
       }
     }
   }

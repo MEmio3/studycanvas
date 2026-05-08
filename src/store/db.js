@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'studycanvas_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise;
 
@@ -21,14 +21,16 @@ export function initDB() {
           db.createObjectStore('images', { keyPath: 'storageKey' });
         }
 
-        // v2 stores — Flow View
-        if (oldVersion < 2) {
-          if (!db.objectStoreNames.contains('connections')) {
-            const connStore = db.createObjectStore('connections', { keyPath: 'connectionId' });
-            connStore.createIndex('deckId', 'deckId');
+        // v2 stores — Flow View (Removed)
+        // ... handled in prior commits, leaving empty to avoid crashes for early adopters
+
+        // v3 stores — YouTube Mode
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains('playlists')) {
+            db.createObjectStore('playlists', { keyPath: 'deckId' });
           }
-          if (!db.objectStoreNames.contains('flow_layouts')) {
-            db.createObjectStore('flow_layouts', { keyPath: 'deckId' });
+          if (!db.objectStoreNames.contains('watch_progress')) {
+            db.createObjectStore('watch_progress', { keyPath: 'deckId' });
           }
         }
       },

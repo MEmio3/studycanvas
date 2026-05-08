@@ -38,7 +38,16 @@ export class LeftPanel {
 
     const listEl = this.container.querySelector('#page-list-container');
     listEl.querySelectorAll('.page-card').forEach(card => {
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action="watch-jump"]');
+        if (target) {
+          e.stopPropagation();
+          const videoId = target.getAttribute('data-video-id');
+          const time = parseFloat(target.getAttribute('data-time'));
+          document.dispatchEvent(new CustomEvent('app-watch-jump', { detail: { videoId, time } }));
+          return;
+        }
+
         const id = card.getAttribute('data-id');
         if (this.onPageSelect) this.onPageSelect(id);
       });

@@ -1,5 +1,3 @@
-import { TTSEngine } from '../../services/tts.js';
-
 export class SettingsPanel {
   constructor(container) {
     this.container = container;
@@ -10,12 +8,12 @@ export class SettingsPanel {
   loadSettings() {
     const defaults = {
       theme: 'dark',
-      ttsSpeed: 1.0,
-      ttsVoice: 'af_heart',
-      ttsEngine: 'kokoro',
+      ttsSpeed: 1.2,
+      ttsVoice: 'Google UK English Male',
       autoAdvance: true,
       autoAdvanceDelay: 2000,
       transition: 'slide',
+      playbackOrder: 'sidebar',
       annotationColor: '#1D9E75'
     };
     const saved = localStorage.getItem('studycanvas_settings');
@@ -28,9 +26,6 @@ export class SettingsPanel {
   }
 
   render() {
-    const kokoroVoices = TTSEngine.getKokoroVoices();
-    const isKokoro = this.settings.ttsEngine !== 'browser';
-
     this.container.innerHTML = `
       <div class="settings-backdrop" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none;">
         <div class="settings-drawer" style="position: absolute; right: 0; top: 0; bottom: 0; width: 400px; background: var(--bg-elevated); box-shadow: -4px 0 24px rgba(0,0,0,0.5); padding: var(--space-24); overflow-y: auto; transform: translateX(100%); transition: transform 0.3s ease;">
@@ -43,29 +38,11 @@ export class SettingsPanel {
             <h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-12); text-transform: uppercase; letter-spacing: 1px;">Text-to-Speech</h3>
             
             <div style="margin-bottom: var(--space-16);">
-              <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">TTS Engine</label>
-              <select id="setting-tts-engine" style="width: 100%; padding: var(--space-8); background: var(--bg-base); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm);">
-                <option value="kokoro" ${isKokoro ? 'selected' : ''}>🧠 Kokoro Neural (Offline, Natural)</option>
-                <option value="browser" ${!isKokoro ? 'selected' : ''}>🔊 Browser Default (Web Speech API)</option>
-              </select>
-              <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">
-                ${isKokoro ? 'Neural TTS — downloads 82 MB model on first use (cached permanently).' : 'Uses your browser\'s built-in speech synthesis.'}
-              </div>
-            </div>
-
-            <div style="margin-bottom: var(--space-16);">
               <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">TTS Speed (${this.settings.ttsSpeed}x)</label>
               <input type="range" id="setting-tts-speed" min="0.5" max="2.0" step="0.1" value="${this.settings.ttsSpeed}" style="width: 100%;">
             </div>
-            
-            <div id="kokoro-voice-section" style="margin-bottom: var(--space-16); ${isKokoro ? '' : 'display: none;'}">
-              <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">Kokoro Voice</label>
-              <select id="setting-kokoro-voice" style="width: 100%; padding: var(--space-8); background: var(--bg-base); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm);">
-                ${kokoroVoices.map(v => `<option value="${v.id}" ${v.id === this.settings.ttsVoice ? 'selected' : ''}>${v.label}</option>`).join('')}
-              </select>
-            </div>
 
-            <div id="browser-voice-section" style="margin-bottom: var(--space-16); ${isKokoro ? 'display: none;' : ''}">
+            <div id="browser-voice-section" style="margin-bottom: var(--space-16);">
               <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">Browser Voice</label>
               <select id="setting-tts-voice" style="width: 100%; padding: var(--space-8); background: var(--bg-base); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm);">
                 <option value="">Default Browser Voice</option>
@@ -76,14 +53,6 @@ export class SettingsPanel {
           <div class="settings-section" style="margin-bottom: var(--space-24);">
             <h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-12); text-transform: uppercase; letter-spacing: 1px;">Presentation Defaults</h3>
             
-            <div style="margin-bottom: var(--space-16);">
-              <label style="display: block; font-size: 14px; margin-bottom: var(--space-4);">Playback Order</label>
-              <select id="setting-playback-order" style="width: 100%; padding: var(--space-8); background: var(--bg-base); border: 1px solid var(--border-default); color: var(--text-primary); border-radius: var(--radius-sm);">
-                <option value="sidebar" ${this.settings.playbackOrder === 'sidebar' ? 'selected' : ''}>Use sidebar order</option>
-                <option value="flow" ${this.settings.playbackOrder === 'flow' ? 'selected' : ''}>Follow Flow connections</option>
-              </select>
-            </div>
-
             <div style="margin-bottom: var(--space-16); display: flex; align-items: center; justify-content: space-between;">
               <label style="font-size: 14px;">Auto-advance slides</label>
               <input type="checkbox" id="setting-auto-advance" ${this.settings.autoAdvance ? 'checked' : ''}>
@@ -123,9 +92,7 @@ export class SettingsPanel {
     `;
 
     this.attachEvents();
-    if (!isKokoro) {
-      this.populateVoices();
-    }
+    this.populateVoices();
   }
 
   async populateVoices() {
@@ -147,7 +114,7 @@ export class SettingsPanel {
       const option = document.createElement('option');
       option.value = voice.voiceURI;
       option.textContent = `${voice.name} (${voice.lang})`;
-      if (voice.voiceURI === this.settings.ttsVoice) {
+      if (voice.voiceURI === this.settings.ttsVoice || voice.name === this.settings.ttsVoice) {
         option.selected = true;
       }
       select.appendChild(option);
@@ -175,22 +142,9 @@ export class SettingsPanel {
       setTimeout(() => drawer.style.transform = 'translateX(0)', 10);
     });
 
-    // Engine toggle
-    this.container.querySelector('#setting-tts-engine').addEventListener('change', (e) => {
-      this.settings.ttsEngine = e.target.value;
-      const isKokoro = e.target.value === 'kokoro';
-      this.container.querySelector('#kokoro-voice-section').style.display = isKokoro ? '' : 'none';
-      this.container.querySelector('#browser-voice-section').style.display = isKokoro ? 'none' : '';
-      if (!isKokoro) this.populateVoices();
-    });
-
     this.container.querySelector('#setting-tts-speed').addEventListener('input', (e) => {
       this.settings.ttsSpeed = parseFloat(e.target.value);
       e.target.previousElementSibling.textContent = `TTS Speed (${this.settings.ttsSpeed}x)`;
-    });
-
-    this.container.querySelector('#setting-kokoro-voice').addEventListener('change', (e) => {
-      this.settings.ttsVoice = e.target.value;
     });
 
     this.container.querySelector('#setting-tts-voice').addEventListener('change', (e) => {
@@ -205,9 +159,6 @@ export class SettingsPanel {
     });
     this.container.querySelector('#setting-transition').addEventListener('change', (e) => {
       this.settings.transition = e.target.value;
-    });
-    this.container.querySelector('#setting-playback-order').addEventListener('change', (e) => {
-      this.settings.playbackOrder = e.target.value;
     });
     this.container.querySelector('#setting-annotation-color').addEventListener('change', (e) => {
       this.settings.annotationColor = e.target.value;

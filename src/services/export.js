@@ -1,14 +1,10 @@
 import { getImage } from '../store/images.js';
 import { AnnotationLayer } from '../components/AnnotationLayer.js';
-import { getConnectionsForDeck } from '../store/connections.js';
-import { getFlowLayout } from '../store/flowLayout.js';
 
 export async function exportDeckAsJson(deck, pages) {
   const exportData = {
     deck: deck,
-    pages: [],
-    connections: await getConnectionsForDeck(deck.deckId),
-    flowLayout: await getFlowLayout(deck.deckId)
+    pages: []
   };
 
   for (const page of pages) {
@@ -155,7 +151,13 @@ export async function exportDeckAsPdf(deck, pages) {
     if (page.textBlock?.source) {
        doc.setFontSize(12);
        doc.setTextColor(150, 150, 150);
-       doc.text(`Source: ${page.textBlock.source}`, 680, 680);
+       doc.text(`Source: ${page.textBlock.source}`, 680, 660);
+    }
+
+    if (page.videoTimestamp) {
+       doc.setFontSize(12);
+       doc.setTextColor(29, 158, 117);
+       doc.text(`Captured from YouTube: ${page.videoTimestamp.videoTitle} @ ${page.videoTimestamp.formatted}`, 680, 680);
     }
   }
 

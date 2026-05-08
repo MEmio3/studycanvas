@@ -21,6 +21,11 @@ export function renderPageCard(page, isActive) {
           ${page.isFlagged ? '<i class="ti ti-star-filled" style="color: var(--amber); font-size: 12px; margin-left: 4px; flex-shrink: 0;"></i>' : ''}
         </div>
         ${page.topic ? `<div class="pill" style="margin-top: 4px;">${page.topic}</div>` : ''}
+        ${page.videoTimestamp ? `
+          <div class="yt-timestamp-badge" style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" data-action="watch-jump" data-video-id="${page.videoTimestamp.videoId}" data-time="${page.videoTimestamp.seconds}">
+            <i class="ti ti-brand-youtube" style="color: var(--watch-complete-color);"></i> ${page.videoTimestamp.formatted}
+          </div>
+        ` : ''}
       </div>
     </div>
   `;

@@ -5,7 +5,6 @@ import { LeftPanel } from './components/LeftPanel.js';
 import { SettingsPanel } from './components/Modals/SettingsPanel.js';
 import { getDeck, updateDeck } from './store/decks.js';
 import { getPagesForDeck, createPage, updatePage } from './store/pages.js';
-import { getConnectionsForDeck } from './store/connections.js';
 
 class EditorView {
   constructor(container, params) {
@@ -60,11 +59,6 @@ class EditorView {
       }
     };
     document.addEventListener('page-created', this.handlePageCreatedBound);
-
-    this.handleFlowNodeSelectedBound = (e) => {
-      this.setActivePage(e.detail.id, true); // true = skip canvas render to avoid unmounting FlowCanvas
-    };
-    document.addEventListener('flow-node-selected', this.handleFlowNodeSelectedBound);
   }
 
   unmount() {
@@ -75,7 +69,6 @@ class EditorView {
     document.removeEventListener('exit-presentation', this.handleExitPresentationBound);
     document.removeEventListener('presentation-page-end', this.handlePresentationEndBound);
     document.removeEventListener('page-created', this.handlePageCreatedBound);
-    document.removeEventListener('flow-node-selected', this.handleFlowNodeSelectedBound);
     if (this.currentCanvasComponent && this.currentCanvasComponent.unmount) {
       this.currentCanvasComponent.unmount();
     }
@@ -101,22 +94,9 @@ class EditorView {
     if (this.mode !== 'slide' && this.mode !== 'present') return;
     
     let nextId = null;
-    const settingsStr = localStorage.getItem('studycanvas_settings');
-    const settings = settingsStr ? JSON.parse(settingsStr) : {};
-    
-    if (settings.playbackOrder === 'flow') {
-      const connections = await getConnectionsForDeck(this.deckId);
-      const seqEdge = connections.find(c => c.type === 'sequence' && c.sourcePageId === this.activePageId);
-      if (seqEdge) {
-        nextId = seqEdge.targetPageId;
-      }
-    }
-    
-    if (!nextId) {
-      const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
-      if (idx < this.pages.length - 1) {
-        nextId = this.pages[idx + 1].pageId;
-      }
+    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+    if (idx < this.pages.length - 1) {
+      nextId = this.pages[idx + 1].pageId;
     }
     
     if (nextId) {
@@ -129,22 +109,9 @@ class EditorView {
     if (this.mode !== 'slide' && this.mode !== 'present') return;
     
     let prevId = null;
-    const settingsStr = localStorage.getItem('studycanvas_settings');
-    const settings = settingsStr ? JSON.parse(settingsStr) : {};
-    
-    if (settings.playbackOrder === 'flow') {
-      const connections = await getConnectionsForDeck(this.deckId);
-      const seqEdge = connections.find(c => c.type === 'sequence' && c.targetPageId === this.activePageId);
-      if (seqEdge) {
-        prevId = seqEdge.sourcePageId;
-      }
-    }
-    
-    if (!prevId) {
-      const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
-      if (idx > 0) {
-        prevId = this.pages[idx - 1].pageId;
-      }
+    const idx = this.pages.findIndex(p => p.pageId === this.activePageId);
+    if (idx > 0) {
+      prevId = this.pages[idx - 1].pageId;
     }
     
     if (prevId) {
@@ -194,6 +161,40 @@ class EditorView {
       }
     );
     this.topBar.render();
+
+    document.addEventListener('app-watch-jump', (e) => {
+      const { videoId, time } = e.detail;
+      this.mode = 'watch';
+      this.renderMainCanvas();
+      
+      // Delay to allow YouTubeMode to render and start
+      setTimeout(() => {
+        if (this.currentCanvasComponent && this.currentCanvasComponent.handleVideoSelect) {
+          this.currentCanvasComponent.activeVideoId = videoId;
+          this.currentCanvasComponent.currentVideoTime = time;
+          // Trigger a load
+          if (this.currentCanvasComponent.playlist) {
+            const video = this.currentCanvasComponent.playlist.videos.find(v => v.videoId === videoId);
+            if (video) {
+              // Ensure watch progress object exists for this video
+              if (!this.currentCanvasComponent.watchProgress.videos[video.videoId]) {
+                this.currentCanvasComponent.watchProgress.videos[video.videoId] = {
+                  watchedSeconds: time,
+                  durationSeconds: video.durationSeconds,
+                  isComplete: false,
+                  lastWatchedAt: null,
+                  completedAt: null
+                };
+              } else {
+                this.currentCanvasComponent.watchProgress.videos[video.videoId].watchedSeconds = time;
+              }
+              
+              this.currentCanvasComponent.handleVideoSelect(video);
+            }
+          }
+        }
+      }, 500);
+    });
 
     this.leftPanel = new LeftPanel(
       this.container.querySelector('#left-panel-container'),
@@ -281,7 +282,12 @@ class EditorView {
       this.currentCanvasComponent = null;
     }
     
-    if (!activePage) {
+    const topBarContainer = this.container.querySelector('#top-bar-container');
+    const leftPanelContainer = this.container.querySelector('#left-panel-container');
+    if (topBarContainer) topBarContainer.style.display = 'block';
+    if (leftPanelContainer) leftPanelContainer.style.display = 'block';
+
+    if (!activePage && this.mode !== 'watch') {
       canvasContainer.innerHTML = '<div class="flex-center" style="height: 100%;">Select or create a page</div>';
       return;
     }
@@ -312,13 +318,16 @@ class EditorView {
         this.currentCanvasComponent = new PresentCanvas(canvasContainer, activePage);
         this.currentCanvasComponent.render();
       });
-    } else if (this.mode === 'flow') {
-      // Flow View — render the node graph canvas
-      import('./components/FlowCanvas/FlowCanvas.js').then(({ FlowCanvas }) => {
-        this.currentCanvasComponent = new FlowCanvas(canvasContainer, this.deckId, this.pages);
+    } else if (this.mode === 'watch') {
+      // Hide panels
+      const topBarContainer = this.container.querySelector('#top-bar-container');
+      const leftPanelContainer = this.container.querySelector('#left-panel-container');
+      if (leftPanelContainer) leftPanelContainer.style.display = 'none';
+
+      import('./components/YouTubeMode/YouTubeMode.js').then(({ YouTubeMode }) => {
+        this.currentCanvasComponent = new YouTubeMode(canvasContainer, this.deckId, this.topBar);
         this.currentCanvasComponent.render();
       });
-      return; // Don't run the per-page logic below
     }
   }
 }
@@ -336,67 +345,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const router = new Router(routes, '');
   router.start();
-
-  // Extension Bridge
-  if (window.chrome && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'save_new_page') {
-        document.dispatchEvent(new CustomEvent('external-capture', { detail: request.payload }));
-      }
-    });
-  }
-
-  document.addEventListener('external-capture', async (e) => {
-    const payload = e.detail;
-    const { getDecks, createDeck } = await import('./store/decks.js');
-    const { createPage, updatePage } = await import('./store/pages.js');
-    const { saveImage } = await import('./store/images.js');
-    const { generateId } = await import('./utils/uuid.js');
-
-    let targetDeckId = null;
-    const hash = window.location.hash;
-    if (hash.startsWith('#deck/')) {
-      targetDeckId = hash.split('/')[1];
-    } else {
-      const decks = await getDecks();
-      if (decks.length > 0) {
-        targetDeckId = decks[0].deckId;
-      } else {
-        const newDeck = await createDeck("Captured Notes");
-        targetDeckId = newDeck.deckId;
-      }
-    }
-
-    const page = await createPage(targetDeckId, `Captured Page`);
-    page.topic = payload.topic || '';
-    page.textBlock.rawText = payload.text || '';
-    page.textBlock.source = payload.source || '';
-
-    if (payload.screenshotDataUrl) {
-      const res = await fetch(payload.screenshotDataUrl);
-      const blob = await res.blob();
-      const storageKey = `img_${generateId()}`;
-      await saveImage(storageKey, blob);
-      
-      page.images = [{
-        storageKey: storageKey,
-        mimeType: 'image/jpeg',
-        annotations: []
-      }];
-    }
-
-    const matches = page.textBlock.rawText.match(/[^.!?]+[.!?]+/g) || (page.textBlock.rawText ? [page.textBlock.rawText] : []);
-    page.textBlock.sentences = matches.map((s, i) => ({
-      index: i,
-      text: s.trim()
-    })).filter(s => s.text.length > 0);
-
-    await updatePage(page);
-    document.dispatchEvent(new CustomEvent('page-created', { detail: page }));
-    
-    // If not in editor, might want to redirect
-    if (!hash.startsWith('#deck/')) {
-       window.location.hash = `#deck/${targetDeckId}`;
-    }
-  });
 });
