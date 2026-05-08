@@ -1,7 +1,6 @@
-import { updateDeck } from '../store/decks.js';
+import { updateNotebook } from '../store/notebooks.js';
 import { updatePage } from '../store/pages.js';
 import { saveImage } from '../store/images.js';
-import { generateId } from '../utils/uuid.js';
 
 export function importDeckFromJson(file, onComplete, onError) {
   const reader = new FileReader();
@@ -12,7 +11,7 @@ export function importDeckFromJson(file, onComplete, onError) {
         throw new Error('Invalid StudyCanvas format');
       }
 
-      const newDeckId = generateId();
+      const newDeckId = crypto.randomUUID();
       const oldToNewPageMap = {};
 
       const deck = { ...data.deck };
@@ -20,7 +19,7 @@ export function importDeckFromJson(file, onComplete, onError) {
       deck.pages = [];
 
       for (const page of data.pages) {
-        const newPageId = generateId();
+        const newPageId = crypto.randomUUID();
         oldToNewPageMap[page.pageId] = newPageId;
         deck.pages.push(newPageId);
         
@@ -37,7 +36,7 @@ export function importDeckFromJson(file, onComplete, onError) {
                 base64String = base64String.split(',')[1];
               }
               const blob = await base64ToBlob(base64String, mimeType);
-              const newStorageKey = `img_${generateId()}`;
+              const newStorageKey = `img_${crypto.randomUUID()}`;
               img.storageKey = newStorageKey;
               await saveImage(newStorageKey, blob);
               delete img.base64Data;
@@ -47,7 +46,7 @@ export function importDeckFromJson(file, onComplete, onError) {
         await updatePage(page);
       }
 
-      await updateDeck(deck);
+      await updateNotebook(deck);
 
       if (onComplete) onComplete(deck.deckId);
     } catch (err) {

@@ -1,0 +1,1 @@
+import{t as e}from"./db-CmEX-cIt.js";async function t(t){return await(await e()).put(`playlists`,t),t}async function n(t){return await(await e()).get(`playlists`,t)}export{n as getPlaylist,t as savePlaylist};

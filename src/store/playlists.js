@@ -6,12 +6,13 @@ export async function savePlaylist(playlist) {
   return playlist;
 }
 
-export async function getPlaylist(deckId) {
+export async function getPlaylist(notebookId) {
   const db = await getDB();
-  return await db.get('playlists', deckId);
+  return await db.get('playlists', notebookId);
 }
 
-export async function deletePlaylist(deckId) {
+export async function deletePlaylist(notebookId) {
   const db = await getDB();
-  await db.delete('playlists', deckId);
+  await db.delete('playlists', notebookId);
 }
+

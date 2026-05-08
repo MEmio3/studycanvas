@@ -1,4 +1,4 @@
-import { getPagesForDeck } from '../../store/pages.js';
+import { getPagesForNotebook } from '../../store/pages.js';
 
 export class TtsPageSelector {
   constructor(container, deckId, onSelect, onClose) {
@@ -11,7 +11,7 @@ export class TtsPageSelector {
   }
 
   async render() {
-    this.pages = await getPagesForDeck(this.deckId);
+    this.pages = await getPagesForNotebook(this.deckId);
     
     // Sort newest first
     this.pages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

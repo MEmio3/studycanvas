@@ -1,5 +1,6 @@
 import { createPage, updatePage } from '../../store/pages.js';
-import { generateId } from '../../utils/uuid.js';
+import { getSubsectionsForNotebook } from '../../store/subsections.js';
+import { getSectionsForNotebook } from '../../store/sections.js';
 import { getDB } from '../../store/db.js';
 
 export class CapturePanel {
@@ -13,6 +14,29 @@ export class CapturePanel {
     this.onClose = onClose;
 
     this.images = []; // Array of blobs
+    this.targetSectionId = null;
+    this.targetSubsectionId = null;
+    this.targetLabel = 'Select Location';
+  }
+
+  async initLocation() {
+    this.sections = await getSectionsForNotebook(this.deckId);
+    this.subsections = await getSubsectionsForNotebook(this.deckId);
+    
+    const lastSubId = localStorage.getItem('studycanvas_last_subsection');
+    let targetSub = null;
+    if (lastSubId) targetSub = this.subsections.find(s => s.subsectionId === lastSubId);
+    if (!targetSub && this.subsections.length > 0) targetSub = this.subsections[0];
+
+    if (targetSub) {
+      this.targetSubsectionId = targetSub.subsectionId;
+      this.targetSectionId = targetSub.sectionId;
+      const sec = this.sections.find(s => s.sectionId === targetSub.sectionId);
+      this.targetLabel = (sec ? sec.title + ' / ' : '') + targetSub.title;
+    }
+    
+    const btn = this.container.querySelector('#yt-capture-location');
+    if (btn) btn.innerHTML = `<i class="ti ti-folder"></i> ${this.targetLabel}`;
   }
 
   formatTimestamp(totalSeconds) {
@@ -60,6 +84,11 @@ export class CapturePanel {
         </div>
 
         <div class="yt-capture-footer">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <button id="yt-capture-location" class="ghost" style="font-size: 12px; padding: 4px 8px; color: var(--text-secondary); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <i class="ti ti-folder"></i> ${this.targetLabel}
+            </button>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
             <input type="text" id="yt-capture-title" value="${defaultTitle}" style="width: 100%; padding: 6px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-default); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
             <input type="text" id="yt-capture-topic" placeholder="Topic..." style="width: 100%; padding: 6px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-default); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
@@ -81,6 +110,7 @@ export class CapturePanel {
     });
 
     this.attachEvents();
+    this.initLocation();
     this.container.querySelector('#yt-capture-editor').focus();
   }
 
@@ -104,6 +134,31 @@ export class CapturePanel {
 
     // Save Logic
     saveBtn.addEventListener('click', () => this.handleSave());
+
+    // Location Picker Logic
+    const locBtn = this.container.querySelector('#yt-capture-location');
+    locBtn.addEventListener('click', () => {
+      import('../LocationPicker.js').then(({ LocationPicker }) => {
+        const picker = new LocationPicker(
+          locBtn,
+          this.sections,
+          this.subsections,
+          this.targetSubsectionId,
+          (secId, subId) => {
+            this.targetSectionId = secId;
+            this.targetSubsectionId = subId;
+            const sec = this.sections.find(s => s.sectionId === secId);
+            const sub = this.subsections.find(s => s.subsectionId === subId);
+            this.targetLabel = (sec ? sec.title + ' / ' : '') + (sub ? sub.title : '');
+            locBtn.innerHTML = `<i class="ti ti-folder"></i> ${this.targetLabel}`;
+          },
+          () => {
+            alert('To create a new section, please use the Left Panel.');
+          }
+        );
+        picker.render();
+      });
+    });
 
     // Image Upload Logic
     dropzone.addEventListener('click', () => fileInput.click());
@@ -223,9 +278,15 @@ export class CapturePanel {
     saveBtn.innerHTML = 'Saving...';
 
     try {
-      // 1. Create page
-      const page = await createPage(this.deckId, title);
-      page.topic = topic;
+      // 1. Use the selected target subsection
+      if (!this.targetSectionId || !this.targetSubsectionId) {
+        alert('Please select a valid section and subsection.');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="ti ti-device-floppy"></i> Save as Page';
+        return;
+      }
+
+      const page = await createPage(this.deckId, this.targetSectionId, this.targetSubsectionId, title);
       page.captureSource = 'youtube_capture';
       page.videoTimestamp = {
         videoId: this.videoId,
@@ -241,7 +302,7 @@ export class CapturePanel {
       const db = await getDB();
       for (const blob of this.images) {
         const imgObj = {
-          storageKey: generateId(),
+          storageKey: crypto.randomUUID(),
           blob: blob,
           type: blob.type,
           name: blob.name || 'capture.png'

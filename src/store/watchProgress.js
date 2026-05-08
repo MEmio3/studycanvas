@@ -7,20 +7,20 @@ export async function saveWatchProgress(progress) {
   return progress;
 }
 
-export async function getWatchProgress(deckId) {
+export async function getWatchProgress(notebookId) {
   const db = await getDB();
-  const progress = await db.get('watch_progress', deckId);
+  const progress = await db.get('watch_progress', notebookId);
   if (progress) return progress;
   
-  // Return empty structure if not found
   return {
-    deckId,
+    notebookId,
     updatedAt: new Date().toISOString(),
     videos: {}
   };
 }
 
-export async function deleteWatchProgress(deckId) {
+export async function deleteWatchProgress(notebookId) {
   const db = await getDB();
-  await db.delete('watch_progress', deckId);
+  await db.delete('watch_progress', notebookId);
 }
+

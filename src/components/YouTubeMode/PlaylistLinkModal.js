@@ -80,7 +80,7 @@ export class PlaylistLinkModal {
 
       try {
         const playlistData = await fetchPlaylist(playlistId, apiKey);
-        playlistData.deckId = this.deckId; // Link to current deck
+        playlistData.notebookId = this.deckId; // Link to current notebook
         
         await savePlaylist(playlistData);
         

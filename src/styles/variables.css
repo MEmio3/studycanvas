@@ -44,4 +44,35 @@
   --transition-fast: 120ms ease;
   --transition-default: 200ms ease;
   --transition-slow: 350ms ease;
+
+  /* Hierarchy tree */
+  --section-header-bg: #161A24;
+  --section-header-text: var(--text-primary);
+  --subsection-header-text: var(--text-secondary);
+  --subsection-active-text: #1D9E75;
+  --tree-indent-section: 12px;
+  --tree-indent-subsection: 24px;
+  --tree-indent-page: 12px;
+
+  /* Save state indicator */
+  --save-state-saved: #1D9E75;
+  --save-state-unsaved: #D4A017;
+  --save-state-saving: var(--text-secondary);
+  --save-state-error: #E05252;
+
+  /* Deletion confirmations */
+  --delete-btn-bg: rgba(224, 82, 82, 0.15);
+  --delete-btn-color: #E05252;
+  --delete-btn-border: rgba(224, 82, 82, 0.3);
+  --delete-btn-bg-hover: rgba(224, 82, 82, 0.25);
+
+  /* Notebook Manager cards */
+  --notebook-card-bg: #1A1E2A;
+  --notebook-card-border: #2A2E3A;
+  --notebook-card-hover-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

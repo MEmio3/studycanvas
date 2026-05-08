@@ -219,7 +219,7 @@ export class YouTubeMode {
       const { fetchPlaylist } = await import('../../services/youtubeApi.js');
       const { savePlaylist } = await import('../../store/playlists.js');
       const newData = await fetchPlaylist(this.playlist.playlistId, apiKey);
-      newData.deckId = this.deckId;
+      newData.notebookId = this.deckId;
       await savePlaylist(newData);
       
       this.playlist = newData;
@@ -381,7 +381,7 @@ export class YouTubeMode {
   setupTtsListeners() {
     this.ttsBoundaryHandler = (e) => {
       if (this.subtitleBarComponent) {
-        this.subtitleBarComponent.updateProgress(e.detail.charIndex);
+        this.subtitleBarComponent.updateProgress(e.detail.wordIndex);
       }
     };
     this.ttsEndHandler = () => {
@@ -403,8 +403,8 @@ export class YouTubeMode {
   async showLatestPagePreview() {
     if (tts.isPlaying) return; // Don't show if currently playing TTS
     
-    const { getPagesForDeck } = await import('../../store/pages.js');
-    const pages = await getPagesForDeck(this.deckId);
+    const { getPagesForNotebook } = await import('../../store/pages.js');
+    const pages = await getPagesForNotebook(this.deckId);
     if (pages.length === 0) return;
     
     pages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

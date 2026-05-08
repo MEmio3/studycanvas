@@ -18,21 +18,22 @@ export class TtsSubtitleBar {
     this.renderText();
   }
 
-  updateProgress(charIndex) {
+  updateProgress(globalWordIndex) {
     if (this.sentences.length === 0) return;
     
-    // Find which sentence we are in based on total chars
-    let totalLength = 0;
+    // Find which sentence we are in based on total words
+    let totalWords = 0;
     let sentenceIdx = 0;
-    let charOffsetInSentence = 0;
+    let wordOffsetInSentence = 0;
 
     for (let i = 0; i < this.sentences.length; i++) {
-      if (totalLength + this.sentences[i].length > charIndex) {
+      const wordsInSentence = this.sentences[i].split(/\s+/).length;
+      if (totalWords + wordsInSentence > globalWordIndex) {
         sentenceIdx = i;
-        charOffsetInSentence = charIndex - totalLength;
+        wordOffsetInSentence = globalWordIndex - totalWords;
         break;
       }
-      totalLength += this.sentences[i].length + 1; // +1 for the space joining them in tts
+      totalWords += wordsInSentence;
     }
 
     if (sentenceIdx !== this.currentIndex) {
@@ -42,32 +43,20 @@ export class TtsSubtitleBar {
     }
 
     // Now highlight the word
-    this.highlightWordInCurrentSentence(charOffsetInSentence);
+    this.highlightWordInCurrentSentence(wordOffsetInSentence);
   }
 
-  highlightWordInCurrentSentence(charOffset) {
+  highlightWordInCurrentSentence(wordIndex) {
     const currentSentenceEl = this.container.querySelector('#yt-tts-current-sentence');
     if (!currentSentenceEl) return;
 
     const sentenceText = this.sentences[this.currentIndex];
     if (!sentenceText) return;
 
-    // Very naive word highlight: split by spaces and match char offset
-    let wordIndex = 0;
-    let charCount = 0;
-    const words = sentenceText.split(' ');
-    
-    for (let i = 0; i < words.length; i++) {
-      if (charCount + words[i].length >= charOffset) {
-        wordIndex = i;
-        break;
-      }
-      charCount += words[i].length + 1; // +1 for space
-    }
-
     if (wordIndex !== this.currentWordIndex) {
       this.currentWordIndex = wordIndex;
       
+      const words = sentenceText.split(/\s+/);
       const html = words.map((w, i) => {
         if (i === wordIndex) {
           return `<span style="color: var(--subtitle-word-highlight);">${w}</span>`;
